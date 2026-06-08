@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
-    <title>Unique Match · Pair Challenge | Dobble Game</title>
+    <title>Unique Match · Dobble Game | Random & Challenge Modes</title>
     <style>
         * {
             box-sizing: border-box;
@@ -29,6 +29,36 @@
             box-shadow: 0 30px 45px rgba(0, 0, 0, 0.35), inset 0 1px 3px rgba(255, 255, 200, 0.8);
             padding: 1.5rem 1.8rem 2rem;
             transition: all 0.2s;
+        }
+
+        /* mode toggle buttons */
+        .mode-bar {
+            display: flex;
+            justify-content: center;
+            gap: 1.5rem;
+            margin-bottom: 1.2rem;
+        }
+        .mode-btn {
+            background: #d9c7a7;
+            border: none;
+            font-size: 1rem;
+            font-weight: bold;
+            padding: 0.5rem 1.5rem;
+            border-radius: 40px;
+            color: #3a5c2e;
+            cursor: pointer;
+            transition: 0.1s;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            font-family: inherit;
+        }
+        .mode-btn.active {
+            background: #e09d32;
+            color: white;
+            box-shadow: 0 3px 0 #7b4a1a;
+            transform: translateY(-1px);
+        }
+        .mode-btn:active {
+            transform: scale(0.96);
         }
 
         h1 {
@@ -191,11 +221,6 @@
             transform: none;
         }
 
-        .disabled-btn {
-            opacity: 0.5;
-            pointer-events: none;
-        }
-
         .feedback {
             text-align: center;
             font-size: 1.1rem;
@@ -269,6 +294,8 @@
             font-weight: bold;
             font-size: 0.8rem;
             color: #4b6b3e;
+            text-align: center;
+            min-width: 130px;
         }
 
         .progress-text .progress-count {
@@ -326,7 +353,11 @@
     </style>
 </head>
 <body>
-<div class="game-container" id="gameRoot">
+<div class="game-container">
+    <div class="mode-bar">
+        <button id="randomModeBtn" class="mode-btn active">🎲 Random Mode</button>
+        <button id="challengeModeBtn" class="mode-btn">🏆 Challenge Mode</button>
+    </div>
     <h1>🔷 Unique Match · Pair Challenge 🔶</h1>
     <div style="text-align:center;"><span class="sub">Each pair shares ONE word</span></div>
 
@@ -360,7 +391,7 @@
                 <span>4th: <span id="stat4" class="stat-value">0</span></span>
             </div>
             <div class="progress-text" id="progressText">
-                Progress: <span id="currentRoundNumber" class="progress-count">0</span> / <span id="totalRoundsDisplay" class="progress-count">57</span>
+                Round: <span id="currentRoundNumber" class="progress-count">0</span>
             </div>
             <span class="refresh-icon" id="reshuffleBtn">🔄 Reset Game</span>
         </div>
@@ -368,9 +399,9 @@
 </div>
 
 <script>
-    // ==============================================================
-    // 1. WORD BANK (57 words)
-    // ==============================================================
+    // --------------------------------------------------------------
+    // 1. WORD BANK (57 unique words)
+    // --------------------------------------------------------------
     const wordBank = [
         "eagle", "chick", "nest", "opossum", "honeybee", "crab", "squirrel", "mouse",
         "frog", "giraffe", "elephant", "koala", "parrot", "sloth", "cheetah", "tree hollow",
@@ -382,9 +413,9 @@
         "many"
     ];
 
-    // ==============================================================
-    // 2. CARDS DATA (57 cards, 0-based from 1‑based user input)
-    // ==============================================================
+    // --------------------------------------------------------------
+    // 2. CARDS (57 projective plane lines, 0‑based)
+    // --------------------------------------------------------------
     const cardsDataRaw = [
         [0,1,2,3,4,5,6,7], [0,8,9,10,11,12,13,14], [0,15,16,17,18,19,20,21],
         [0,22,23,24,25,26,27,28], [0,29,30,31,32,33,34,35], [0,36,37,38,39,40,41,42],
@@ -418,181 +449,171 @@
         words: indices.map(idx => wordBank[idx])
     }));
 
-    // ==============================================================
-    // 3. IMAGE URL (GitHub Pages relative path)
-    // ==============================================================
+    // --------------------------------------------------------------
+    // 3. IMAGES (GitHub Pages path)
+    // --------------------------------------------------------------
     const baseUrl = '/DobbleGame/images/';
-    function getCardImageUrl(cardId) {
-        const cardNumber = cardId + 1;
-        return `${baseUrl}${cardNumber}.png`;
-    }
+    function getCardImageUrl(cardId) { return `${baseUrl}${cardId+1}.png`; }
     function getFallbackImageUrl(cardId) {
-        const num = cardId + 1;
+        const num = cardId+1;
         return `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200' viewBox='0 0 200 200'%3E%3Crect width='200' height='200' fill='%23e8d5b5'/%3E%3Ctext x='100' y='110' font-size='28' text-anchor='middle' fill='%2380552e' font-weight='bold'%3E${num}%3C/text%3E%3Ctext x='100' y='145' font-size='12' text-anchor='middle' fill='%23996e3e'%3Eno image%3C/text%3E%3C/svg%3E`;
     }
     const cardImageUrls = cards.map((_, idx) => getCardImageUrl(idx));
 
-    // ==============================================================
+    // --------------------------------------------------------------
     // 4. GAME STATE
-    // ==============================================================
-    let currentLeftCard = null;
-    let currentRightCard = null;
-    let currentCommonWord = null;
-    let answered = false;          // true if round finished (correct answer given)
-    let currentOptions = [];
-    let attemptCount = 0;          // number of different button clicks this round (before correct)
-    let autoTimer = null;
+    // --------------------------------------------------------------
+    let currentMode = "random";   // "random" or "challenge"
+    let stats = { 1:0, 2:0, 3:0, 4:0 };
+    let roundsCompleted = 0;       // for random mode: total rounds played; for challenge: used unique words count
+    let remainingWords = [];       // challenge mode pool
+    let currentLeftCard = null, currentRightCard = null, currentCommonWord = null;
+    let answered = false, attemptCount = 0, autoTimer = null, currentOptions = [];
     
-    // Statistics: how many times solved in 1st, 2nd, 3rd, 4th attempt
-    let stats = { 1: 0, 2: 0, 3: 0, 4: 0 };
-    
-    // Round counter (number of rounds completed, max 57)
-    let roundsCompleted = 0;
-    const TOTAL_ROUNDS = 57;
-    
-    // Audio elements (mp3 files in root/sounds folder – change path if needed)
+    // Audio & speech
     const rightAudio = new Audio('sounds/right.mp3');
     const wrongAudio = new Audio('sounds/wrong.mp3');
-    
-    // Speech synthesis
     function speakWord(word) {
         if (!window.speechSynthesis) return;
         const utterance = new SpeechSynthesisUtterance(word);
-        utterance.lang = 'en-US';
-        utterance.rate = 0.9;
-        utterance.pitch = 1.0;
-        // Select natural voice if available
-        window.speechSynthesis.cancel(); // avoid overlapping
+        utterance.lang = 'en-US'; utterance.rate = 0.9; utterance.pitch = 1.0;
+        window.speechSynthesis.cancel();
         window.speechSynthesis.speak(utterance);
     }
-    
-    // Update stats UI
+
+    // UI updates
     function updateStatsUI() {
         document.getElementById('stat1').innerText = stats[1];
         document.getElementById('stat2').innerText = stats[2];
         document.getElementById('stat3').innerText = stats[3];
         document.getElementById('stat4').innerText = stats[4];
     }
-    
-    // Update progress display (rounds completed)
     function updateProgressUI() {
-        document.getElementById('currentRoundNumber').innerText = roundsCompleted;
-        // total is fixed: 57
-    }
-    
-    // Reset all statistics and progress
-    function resetStatsAndProgress() {
-        stats = { 1: 0, 2: 0, 3: 0, 4: 0 };
-        roundsCompleted = 0;
-        updateStatsUI();
-        updateProgressUI();
-    }
-    
-    // Record correct answer based on attemptCount (1 to 4)
-    function recordCorrectAttempt() {
-        let attemptsUsed = Math.min(attemptCount, 4);
-        if (attemptsUsed >= 1 && attemptsUsed <= 4) {
-            stats[attemptsUsed]++;
+        const progressDiv = document.getElementById('progressText');
+        if (currentMode === "random") {
+            progressDiv.innerHTML = `Round: <span id="currentRoundNumber" class="progress-count">${roundsCompleted}</span>`;
         } else {
-            // fallback: if something weird, count as 4th try
-            stats[4]++;
+            progressDiv.innerHTML = `Progress: <span id="currentRoundNumber" class="progress-count">${roundsCompleted}</span> / 57`;
         }
-        updateStatsUI();
-        
-        // Increase rounds completed (capped at TOTAL_ROUNDS)
-        if (roundsCompleted < TOTAL_ROUNDS) {
-            roundsCompleted++;
+    }
+    function resetGameState(resetStatsAndProgress = true) {
+        clearAutoTimer();
+        if (resetStatsAndProgress) {
+            stats = { 1:0, 2:0, 3:0, 4:0 };
+            roundsCompleted = 0;
+            if (currentMode === "challenge") {
+                remainingWords = [...wordBank];
+                shuffleArray(remainingWords);
+            }
+            updateStatsUI();
             updateProgressUI();
         }
+        answered = false;
+        attemptCount = 0;
+        // load fresh pair according to current mode
+        if (currentMode === "random") loadRandomPairRandom();
+        else loadChallengePair();
     }
-    
-    // Disable all option buttons (when round ends)
-    function disableAllOptions() {
-        const allBtns = document.querySelectorAll('.option-btn');
-        allBtns.forEach(btn => {
-            btn.disabled = true;
-        });
+    function shuffleArray(arr) { for (let i = arr.length - 1; i > 0; i--) { const j = Math.floor(Math.random()*(i+1)); [arr[i], arr[j]] = [arr[j], arr[i]]; } }
+    function clearAutoTimer() { if (autoTimer) { clearTimeout(autoTimer); autoTimer = null; } }
+    function disableAllOptions() { document.querySelectorAll('.option-btn').forEach(btn => btn.disabled = true); }
+
+    // Find a pair of cards that both contain a given word (and are different)
+    function findCardsForWord(word) {
+        const candidates = cards.filter(card => card.words.includes(word));
+        if (candidates.length < 2) return null;
+        let idxA = Math.floor(Math.random() * candidates.length);
+        let idxB = Math.floor(Math.random() * candidates.length);
+        while (idxA === idxB && candidates.length > 1) idxB = Math.floor(Math.random() * candidates.length);
+        return [candidates[idxA], candidates[idxB]];
     }
-    
-    // Clear timer if exists
-    function clearAutoTimer() {
-        if (autoTimer) {
-            clearTimeout(autoTimer);
-            autoTimer = null;
-        }
-    }
-    
-    // Load next random pair (new round)
-    function loadRandomPair() {
-        // cancel any pending auto jump
+
+    // RANDOM MODE: pick any two different cards randomly
+    function loadRandomPairRandom() {
+        if (currentMode !== "random") return;
         clearAutoTimer();
-        
-        // If game completed (all 57 rounds done), show completion message and prevent further rounds
-        if (roundsCompleted >= TOTAL_ROUNDS) {
-            const feedbackDiv = document.getElementById('feedbackMsg');
-            feedbackDiv.innerHTML = '🏆 Congratulations! You have completed all 57 rounds! 🏆';
-            feedbackDiv.style.background = "#f0d89e";
-            // disable new pair button? not necessary but indicate game finished
-            return;
-        }
-        
         let idxA = Math.floor(Math.random() * cards.length);
         let idxB = Math.floor(Math.random() * cards.length);
-        while (idxA === idxB) {
-            idxB = Math.floor(Math.random() * cards.length);
-        }
+        while (idxA === idxB) idxB = Math.floor(Math.random() * cards.length);
         currentLeftCard = cards[idxA];
         currentRightCard = cards[idxB];
         currentCommonWord = findCommonWord(currentLeftCard, currentRightCard);
-        answered = false;
-        attemptCount = 0;    // fresh attempt counter for this round
-        
-        // Update images
+        answered = false; attemptCount = 0;
+        updateCardImages();
+        currentOptions = generateOptions(currentCommonWord);
+        renderOptions(currentOptions);
+        document.getElementById('feedbackMsg').innerHTML = '🔍 Pick the word that appears on both cards.';
+        document.getElementById('feedbackMsg').style.background = "#e7d6bd";
+    }
+
+    // CHALLENGE MODE: pick a random unused word, then find cards containing it
+    function loadChallengePair() {
+        if (currentMode !== "challenge") return;
+        clearAutoTimer();
+        if (remainingWords.length === 0) {
+            document.getElementById('feedbackMsg').innerHTML = '🏆 Amazing! You completed all 57 words! 🏆 Press Reset to play again.';
+            document.getElementById('feedbackMsg').style.background = "#f0d89e";
+            answered = true; disableAllOptions();
+            return;
+        }
+        // pick random word from remaining pool
+        const wordIndex = Math.floor(Math.random() * remainingWords.length);
+        const selectedWord = remainingWords[wordIndex];
+        const cardPair = findCardsForWord(selectedWord);
+        if (!cardPair) {
+            // fallback: remove word and retry (should not happen)
+            remainingWords.splice(wordIndex,1);
+            loadChallengePair();
+            return;
+        }
+        currentLeftCard = cardPair[0];
+        currentRightCard = cardPair[1];
+        currentCommonWord = selectedWord;
+        answered = false; attemptCount = 0;
+        updateCardImages();
+        currentOptions = generateOptions(currentCommonWord);
+        renderOptions(currentOptions);
+        document.getElementById('feedbackMsg').innerHTML = '🔍 Pick the word that appears on both cards.';
+        document.getElementById('feedbackMsg').style.background = "#e7d6bd";
+    }
+
+    function findCommonWord(cardA, cardB) {
+        const setA = new Set(cardA.words);
+        for (let w of cardB.words) if (setA.has(w)) return w;
+        return null;
+    }
+    function generateOptions(correctWord) {
+        let opts = new Set([correctWord]);
+        let candidates = wordBank.filter(w => w !== correctWord);
+        shuffleArray(candidates);
+        while (opts.size < 4 && candidates.length) opts.add(candidates.pop());
+        return Array.from(opts).sort(() => Math.random() - 0.5);
+    }
+    function updateCardImages() {
         const leftImg = document.getElementById('leftImg');
         const rightImg = document.getElementById('rightImg');
         leftImg.onerror = function() { this.onerror = null; this.src = getFallbackImageUrl(currentLeftCard.id); };
         rightImg.onerror = function() { this.onerror = null; this.src = getFallbackImageUrl(currentRightCard.id); };
         leftImg.src = cardImageUrls[currentLeftCard.id];
         rightImg.src = cardImageUrls[currentRightCard.id];
-        
         document.getElementById('leftWordHint').innerHTML = `📖 ${currentLeftCard.words.length} icons`;
         document.getElementById('rightWordHint').innerHTML = `📖 ${currentRightCard.words.length} icons`;
-        
-        // Generate fresh options
-        currentOptions = generateOptions(currentCommonWord);
-        renderOptions(currentOptions);
-        
-        const feedbackDiv = document.getElementById('feedbackMsg');
-        feedbackDiv.innerHTML = '🔍 Pick the word that appears on both cards.';
-        feedbackDiv.style.background = "#e7d6bd";
     }
-    
-    // Find common word between two cards (guaranteed by design)
-    function findCommonWord(cardA, cardB) {
-        const setA = new Set(cardA.words);
-        for (let w of cardB.words) {
-            if (setA.has(w)) return w;
+    function recordCorrectAttempt() {
+        let attemptsUsed = Math.min(attemptCount, 4);
+        stats[attemptsUsed]++;
+        updateStatsUI();
+        if (currentMode === "challenge") {
+            // remove currentCommonWord from remainingWords
+            const idx = remainingWords.indexOf(currentCommonWord);
+            if (idx !== -1) remainingWords.splice(idx,1);
+            roundsCompleted = 57 - remainingWords.length;
+            updateProgressUI();
+        } else {
+            roundsCompleted++;
+            updateProgressUI();
         }
-        return null;
     }
-    
-    // Generate 4 options (correct + 3 random distinct)
-    function generateOptions(correctWord) {
-        let opts = new Set();
-        opts.add(correctWord);
-        let candidates = wordBank.filter(w => w !== correctWord);
-        // shuffle candidates
-        for (let i = candidates.length - 1; i > 0; i--) {
-            const j = Math.floor(Math.random() * (i + 1));
-            [candidates[i], candidates[j]] = [candidates[j], candidates[i]];
-        }
-        while (opts.size < 4 && candidates.length) {
-            opts.add(candidates.pop());
-        }
-        return Array.from(opts).sort(() => Math.random() - 0.5);
-    }
-    
-    // Render option buttons, each with proper disabled state depending on round status
     function renderOptions(options) {
         const container = document.getElementById('optionsContainer');
         container.innerHTML = '';
@@ -600,122 +621,115 @@
             const btn = document.createElement('button');
             btn.className = 'option-btn';
             btn.innerText = word;
-            // initially enabled (unless round already finished)
             btn.disabled = answered;
             btn.addEventListener('click', (e) => {
                 e.stopPropagation();
-                // If round already finished, ignore
                 if (answered) {
                     document.getElementById('feedbackMsg').innerHTML = '⏳ Round finished. Click "New Pair" to continue.';
                     return;
                 }
-                // Disable this specific button immediately (can't click same twice)
                 if (btn.disabled) return;
                 btn.disabled = true;
-                
-                // 1) Speak the word
                 speakWord(word);
-                
-                // 2) Increment attempt count (only if this word hasn't been chosen before)
-                //    But we disabled the button, so each unique word can be clicked at most once.
                 attemptCount++;
-                
-                // 3) Check correctness
                 const isCorrect = (word === currentCommonWord);
                 const feedbackDiv = document.getElementById('feedbackMsg');
-                
                 if (isCorrect) {
-                    // CORRECT ANSWER
-                    // Play correct sound
-                    rightAudio.play().catch(e => console.log("Audio play error:", e));
+                    rightAudio.play().catch(e=>console.log);
                     feedbackDiv.innerHTML = `✅ Perfect! Common word is "${currentCommonWord}"! 🎉`;
                     feedbackDiv.style.background = "#cae3b5";
-                    // Visual glow effect
                     document.getElementById('cardLeft').classList.add('card-glow');
                     document.getElementById('cardRight').classList.add('card-glow');
                     setTimeout(() => {
                         document.getElementById('cardLeft').classList.remove('card-glow');
                         document.getElementById('cardRight').classList.remove('card-glow');
                     }, 700);
-                    
-                    // Record statistics based on attempts used in this round
                     recordCorrectAttempt();
-                    
-                    // Mark round as finished, disable any remaining buttons
                     answered = true;
                     disableAllOptions();
-                    
-                    // Check if game completed after this round
-                    if (roundsCompleted >= TOTAL_ROUNDS) {
-                        const completeFeedback = document.getElementById('feedbackMsg');
-                        completeFeedback.innerHTML = '🏆 Amazing! You finished all 57 rounds! 🏆';
-                        completeFeedback.style.background = "#f0d89e";
+                    // auto next round after 2s (if not completed challenge)
+                    if (currentMode === "challenge" && remainingWords.length === 0) {
+                        feedbackDiv.innerHTML = '🏆 Challenge completed! Press Reset to play again. 🏆';
                         return;
                     }
-                    
-                    // Schedule auto next round after 2 seconds
                     clearAutoTimer();
                     autoTimer = setTimeout(() => {
-                        loadRandomPair();
+                        if (currentMode === "random") loadRandomPairRandom();
+                        else loadChallengePair();
                         autoTimer = null;
                     }, 2000);
                 } else {
-                    // WRONG ANSWER
-                    wrongAudio.play().catch(e => console.log("Audio play error:", e));
-                    feedbackDiv.innerHTML = `❌ "${word}" is not the common word. Keep trying!`;
+                    wrongAudio.play().catch(e=>console.log);
+                    feedbackDiv.innerHTML = `❌ "${word}" is not correct. Keep trying!`;
                     feedbackDiv.style.background = "#f5ddbc";
-                    // Do NOT disable other buttons, only the clicked one is already disabled.
-                    // The round continues, attemptCount already increased.
-                    // No need to change answered flag.
                 }
             });
             container.appendChild(btn);
         });
     }
-    
-    // Manual refresh / reset everything (stats + progress + new pair)
-    function refreshGame() {
-        clearAutoTimer();
-        resetStatsAndProgress();
-        loadRandomPair();
-    }
-    
-    // Manual new pair without resetting stats (only if game not completed)
-    function nextPair() {
-        if (roundsCompleted >= TOTAL_ROUNDS) {
-            const feedbackDiv = document.getElementById('feedbackMsg');
-            feedbackDiv.innerHTML = '🏆 Game completed! Press "Reset Game" to play again. 🏆';
-            return;
+
+    function switchMode(newMode) {
+        if (currentMode === newMode) return;
+        const confirmSwitch = confirm(`Switch to ${newMode === "random" ? "Random Mode" : "Challenge Mode"}? Stats and progress will reset.`);
+        if (!confirmSwitch) return;
+        currentMode = newMode;
+        // reset all stats & progress
+        stats = { 1:0, 2:0, 3:0, 4:0 };
+        roundsCompleted = 0;
+        if (currentMode === "challenge") {
+            remainingWords = [...wordBank];
+            shuffleArray(remainingWords);
         }
-        if (autoTimer) {
-            // if there's a pending auto jump, cancel it because user manually requests new pair
-            clearAutoTimer();
-        }
-        loadRandomPair();
+        updateStatsUI();
+        updateProgressUI();
+        answered = false; attemptCount = 0; clearAutoTimer();
+        if (currentMode === "random") loadRandomPairRandom();
+        else loadChallengePair();
+        // update active button style
+        document.getElementById('randomModeBtn').classList.toggle('active', currentMode === "random");
+        document.getElementById('challengeModeBtn').classList.toggle('active', currentMode === "challenge");
     }
-    
-    // Reset game fully (stats + progress + new pair)
+
     function resetGame() {
-        refreshGame();
+        if (currentMode === "random") {
+            stats = { 1:0, 2:0, 3:0, 4:0 };
+            roundsCompleted = 0;
+            updateStatsUI(); updateProgressUI();
+            loadRandomPairRandom();
+        } else {
+            stats = { 1:0, 2:0, 3:0, 4:0 };
+            roundsCompleted = 0;
+            remainingWords = [...wordBank];
+            shuffleArray(remainingWords);
+            updateStatsUI(); updateProgressUI();
+            loadChallengePair();
+        }
     }
-    
-    // Initialize event listeners and first load
+
+    function nextPair() {
+        if (answered) {
+            // if round already finished, just force new pair (skip timer)
+            clearAutoTimer();
+            if (currentMode === "random") loadRandomPairRandom();
+            else loadChallengePair();
+        } else {
+            // manual skip before answering? better reset round
+            clearAutoTimer();
+            if (currentMode === "random") loadRandomPairRandom();
+            else loadChallengePair();
+        }
+    }
+
+    // initialise
     function init() {
-        // Set total rounds display
-        document.getElementById('totalRoundsDisplay').innerText = TOTAL_ROUNDS;
-        resetStatsAndProgress();
-        loadRandomPair();
-        document.getElementById('nextPairBtn').addEventListener('click', () => {
-            if (autoTimer) clearAutoTimer();
-            nextPair();
-        });
-        document.getElementById('reshuffleBtn').addEventListener('click', () => {
-            if (autoTimer) clearAutoTimer();
-            resetGame();
-        });
+        remainingWords = [...wordBank];
+        shuffleArray(remainingWords);
+        loadRandomPairRandom();
+        document.getElementById('randomModeBtn').addEventListener('click', () => switchMode("random"));
+        document.getElementById('challengeModeBtn').addEventListener('click', () => switchMode("challenge"));
+        document.getElementById('nextPairBtn').addEventListener('click', () => { clearAutoTimer(); nextPair(); });
+        document.getElementById('reshuffleBtn').addEventListener('click', () => { clearAutoTimer(); resetGame(); });
     }
-    
-    // Start the game
     init();
 </script>
 </body>
