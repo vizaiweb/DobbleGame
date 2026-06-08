@@ -466,8 +466,8 @@
     // --------------------------------------------------------------
     let currentMode = "random";   // "random" or "challenge"
     let stats = { 1:0, 2:0, 3:0, 4:0 };
-    let roundsCompleted = 0;       // for random mode: total rounds played; for challenge: used unique words count
-    let remainingWords = [];       // challenge mode pool
+    let roundsCompleted = 0;
+    let remainingWords = [];
     let currentLeftCard = null, currentRightCard = null, currentCommonWord = null;
     let answered = false, attemptCount = 0, autoTimer = null, currentOptions = [];
     
@@ -492,9 +492,9 @@
     function updateProgressUI() {
         const progressDiv = document.getElementById('progressText');
         if (currentMode === "random") {
-            progressDiv.innerHTML = `Round: <span id="currentRoundNumber" class="progress-count">${roundsCompleted}</span>`;
+            progressDiv.innerHTML = `Round: <span class="progress-count">${roundsCompleted}</span>`;
         } else {
-            progressDiv.innerHTML = `Progress: <span id="currentRoundNumber" class="progress-count">${roundsCompleted}</span> / 57`;
+            progressDiv.innerHTML = `Progress: <span class="progress-count">${roundsCompleted}</span> / 57`;
         }
     }
     function resetGameState(resetStatsAndProgress = true) {
@@ -661,10 +661,20 @@
         });
     }
 
+    // Mode switching with description in confirm dialog
     function switchMode(newMode) {
         if (currentMode === newMode) return;
-        const confirmSwitch = confirm(`Switch to ${newMode === "random" ? "Random Mode" : "Challenge Mode"}? Stats and progress will reset.`);
-        if (!confirmSwitch) return;
+        
+        let message = "";
+        if (newMode === "random") {
+            message = "Switch to Random Mode?\n\nStats and progress will reset.\n\n[Random Mode]\nCards are completely random. Same word may appear many times. No fixed ending. Play as long as you like.";
+        } else {
+            message = "Switch to Challenge Mode?\n\nStats and progress will reset.\n\n[Challenge Mode]\nEach of the 57 words appears exactly once as the correct answer. Complete all 57 rounds to win. Words are randomized.";
+        }
+        
+        const confirmed = confirm(message);
+        if (!confirmed) return;
+        
         currentMode = newMode;
         stats = { 1:0, 2:0, 3:0, 4:0 };
         roundsCompleted = 0;
@@ -677,6 +687,7 @@
         answered = false; attemptCount = 0; clearAutoTimer();
         if (currentMode === "random") loadRandomPairRandom();
         else loadChallengePair();
+        
         document.getElementById('randomModeBtn').classList.toggle('active', currentMode === "random");
         document.getElementById('challengeModeBtn').classList.toggle('active', currentMode === "challenge");
     }
