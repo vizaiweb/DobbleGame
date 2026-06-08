@@ -262,6 +262,22 @@
             margin-left: 4px;
         }
 
+        .progress-text {
+            background: #efe3cf;
+            padding: 6px 14px;
+            border-radius: 40px;
+            font-weight: bold;
+            font-size: 0.8rem;
+            color: #4b6b3e;
+        }
+
+        .progress-text .progress-count {
+            color: #b45f1b;
+            font-size: 1rem;
+            font-weight: bold;
+            margin-left: 4px;
+        }
+
         .refresh-icon {
             background: #b87c3a;
             border-radius: 40px;
@@ -338,10 +354,13 @@
         <button class="next-btn" id="nextPairBtn">🎲 New Pair 🎲</button>
         <div class="footer-stats">
             <div class="stats-panel" id="statsPanel">
-                🎯 1st: <span id="stat1" class="stat-value">0</span>&nbsp;&nbsp;|&nbsp;
-                2nd: <span id="stat2" class="stat-value">0</span>&nbsp;&nbsp;|&nbsp;
-                3rd: <span id="stat3" class="stat-value">0</span>&nbsp;&nbsp;|&nbsp;
-                4th: <span id="stat4" class="stat-value">0</span>
+                <span>1st: <span id="stat1" class="stat-value">0</span></span>
+                <span>2nd: <span id="stat2" class="stat-value">0</span></span>
+                <span>3rd: <span id="stat3" class="stat-value">0</span></span>
+                <span>4th: <span id="stat4" class="stat-value">0</span></span>
+            </div>
+            <div class="progress-text" id="progressText">
+                Progress: <span id="currentRoundNumber" class="progress-count">0</span> / <span id="totalRoundsDisplay" class="progress-count">57</span>
             </div>
             <span class="refresh-icon" id="reshuffleBtn">🔄 Reset Game</span>
         </div>
@@ -427,6 +446,10 @@
     // Statistics: how many times solved in 1st, 2nd, 3rd, 4th attempt
     let stats = { 1: 0, 2: 0, 3: 0, 4: 0 };
     
+    // Round counter (number of rounds completed, max 57)
+    let roundsCompleted = 0;
+    const TOTAL_ROUNDS = 57;
+    
     // Audio elements (mp3 files in root/sounds folder – change path if needed)
     const rightAudio = new Audio('sounds/right.mp3');
     const wrongAudio = new Audio('sounds/wrong.mp3');
@@ -451,10 +474,18 @@
         document.getElementById('stat4').innerText = stats[4];
     }
     
-    // Reset all statistics
-    function resetStats() {
+    // Update progress display (rounds completed)
+    function updateProgressUI() {
+        document.getElementById('currentRoundNumber').innerText = roundsCompleted;
+        // total is fixed: 57
+    }
+    
+    // Reset all statistics and progress
+    function resetStatsAndProgress() {
         stats = { 1: 0, 2: 0, 3: 0, 4: 0 };
+        roundsCompleted = 0;
         updateStatsUI();
+        updateProgressUI();
     }
     
     // Record correct answer based on attemptCount (1 to 4)
@@ -467,6 +498,12 @@
             stats[4]++;
         }
         updateStatsUI();
+        
+        // Increase rounds completed (capped at TOTAL_ROUNDS)
+        if (roundsCompleted < TOTAL_ROUNDS) {
+            roundsCompleted++;
+            updateProgressUI();
+        }
     }
     
     // Disable all option buttons (when round ends)
@@ -489,6 +526,15 @@
     function loadRandomPair() {
         // cancel any pending auto jump
         clearAutoTimer();
+        
+        // If game completed (all 57 rounds done), show completion message and prevent further rounds
+        if (roundsCompleted >= TOTAL_ROUNDS) {
+            const feedbackDiv = document.getElementById('feedbackMsg');
+            feedbackDiv.innerHTML = '🏆 Congratulations! You have completed all 57 rounds! 🏆';
+            feedbackDiv.style.background = "#f0d89e";
+            // disable new pair button? not necessary but indicate game finished
+            return;
+        }
         
         let idxA = Math.floor(Math.random() * cards.length);
         let idxB = Math.floor(Math.random() * cards.length);
@@ -599,6 +645,14 @@
                     answered = true;
                     disableAllOptions();
                     
+                    // Check if game completed after this round
+                    if (roundsCompleted >= TOTAL_ROUNDS) {
+                        const completeFeedback = document.getElementById('feedbackMsg');
+                        completeFeedback.innerHTML = '🏆 Amazing! You finished all 57 rounds! 🏆';
+                        completeFeedback.style.background = "#f0d89e";
+                        return;
+                    }
+                    
                     // Schedule auto next round after 2 seconds
                     clearAutoTimer();
                     autoTimer = setTimeout(() => {
@@ -619,15 +673,20 @@
         });
     }
     
-    // Manual refresh / reset everything (stats + new pair)
+    // Manual refresh / reset everything (stats + progress + new pair)
     function refreshGame() {
         clearAutoTimer();
-        resetStats();
+        resetStatsAndProgress();
         loadRandomPair();
     }
     
-    // Manual new pair without resetting stats
+    // Manual new pair without resetting stats (only if game not completed)
     function nextPair() {
+        if (roundsCompleted >= TOTAL_ROUNDS) {
+            const feedbackDiv = document.getElementById('feedbackMsg');
+            feedbackDiv.innerHTML = '🏆 Game completed! Press "Reset Game" to play again. 🏆';
+            return;
+        }
         if (autoTimer) {
             // if there's a pending auto jump, cancel it because user manually requests new pair
             clearAutoTimer();
@@ -635,13 +694,16 @@
         loadRandomPair();
     }
     
-    // Reset game fully (stats + new pair)
+    // Reset game fully (stats + progress + new pair)
     function resetGame() {
         refreshGame();
     }
     
     // Initialize event listeners and first load
     function init() {
+        // Set total rounds display
+        document.getElementById('totalRoundsDisplay').innerText = TOTAL_ROUNDS;
+        resetStatsAndProgress();
         loadRandomPair();
         document.getElementById('nextPairBtn').addEventListener('click', () => {
             if (autoTimer) clearAutoTimer();
@@ -651,8 +713,6 @@
             if (autoTimer) clearAutoTimer();
             resetGame();
         });
-        // Preload audio to help unlock autoplay on first user interaction
-        // Not required but gentle.
     }
     
     // Start the game
