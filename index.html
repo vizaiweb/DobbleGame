@@ -256,13 +256,11 @@
 
         .footer-stats {
             display: flex;
-            justify-content: space-between;
+            justify-content: center;
             align-items: center;
             margin-top: 1rem;
-            font-size: 0.75rem;
-            color: #7b623c;
+            gap: 2rem;
             flex-wrap: wrap;
-            gap: 8px;
         }
 
         .stats-panel {
@@ -338,6 +336,9 @@
             .stats-panel {
                 font-size: 0.7rem;
                 gap: 0.6rem;
+            }
+            .footer-stats {
+                gap: 0.8rem;
             }
         }
 
@@ -510,7 +511,6 @@
         }
         answered = false;
         attemptCount = 0;
-        // load fresh pair according to current mode
         if (currentMode === "random") loadRandomPairRandom();
         else loadChallengePair();
     }
@@ -518,7 +518,6 @@
     function clearAutoTimer() { if (autoTimer) { clearTimeout(autoTimer); autoTimer = null; } }
     function disableAllOptions() { document.querySelectorAll('.option-btn').forEach(btn => btn.disabled = true); }
 
-    // Find a pair of cards that both contain a given word (and are different)
     function findCardsForWord(word) {
         const candidates = cards.filter(card => card.words.includes(word));
         if (candidates.length < 2) return null;
@@ -528,7 +527,6 @@
         return [candidates[idxA], candidates[idxB]];
     }
 
-    // RANDOM MODE: pick any two different cards randomly
     function loadRandomPairRandom() {
         if (currentMode !== "random") return;
         clearAutoTimer();
@@ -546,7 +544,6 @@
         document.getElementById('feedbackMsg').style.background = "#e7d6bd";
     }
 
-    // CHALLENGE MODE: pick a random unused word, then find cards containing it
     function loadChallengePair() {
         if (currentMode !== "challenge") return;
         clearAutoTimer();
@@ -556,12 +553,10 @@
             answered = true; disableAllOptions();
             return;
         }
-        // pick random word from remaining pool
         const wordIndex = Math.floor(Math.random() * remainingWords.length);
         const selectedWord = remainingWords[wordIndex];
         const cardPair = findCardsForWord(selectedWord);
         if (!cardPair) {
-            // fallback: remove word and retry (should not happen)
             remainingWords.splice(wordIndex,1);
             loadChallengePair();
             return;
@@ -604,7 +599,6 @@
         stats[attemptsUsed]++;
         updateStatsUI();
         if (currentMode === "challenge") {
-            // remove currentCommonWord from remainingWords
             const idx = remainingWords.indexOf(currentCommonWord);
             if (idx !== -1) remainingWords.splice(idx,1);
             roundsCompleted = 57 - remainingWords.length;
@@ -647,7 +641,6 @@
                     recordCorrectAttempt();
                     answered = true;
                     disableAllOptions();
-                    // auto next round after 2s (if not completed challenge)
                     if (currentMode === "challenge" && remainingWords.length === 0) {
                         feedbackDiv.innerHTML = '🏆 Challenge completed! Press Reset to play again. 🏆';
                         return;
@@ -673,7 +666,6 @@
         const confirmSwitch = confirm(`Switch to ${newMode === "random" ? "Random Mode" : "Challenge Mode"}? Stats and progress will reset.`);
         if (!confirmSwitch) return;
         currentMode = newMode;
-        // reset all stats & progress
         stats = { 1:0, 2:0, 3:0, 4:0 };
         roundsCompleted = 0;
         if (currentMode === "challenge") {
@@ -685,7 +677,6 @@
         answered = false; attemptCount = 0; clearAutoTimer();
         if (currentMode === "random") loadRandomPairRandom();
         else loadChallengePair();
-        // update active button style
         document.getElementById('randomModeBtn').classList.toggle('active', currentMode === "random");
         document.getElementById('challengeModeBtn').classList.toggle('active', currentMode === "challenge");
     }
@@ -707,20 +698,11 @@
     }
 
     function nextPair() {
-        if (answered) {
-            // if round already finished, just force new pair (skip timer)
-            clearAutoTimer();
-            if (currentMode === "random") loadRandomPairRandom();
-            else loadChallengePair();
-        } else {
-            // manual skip before answering? better reset round
-            clearAutoTimer();
-            if (currentMode === "random") loadRandomPairRandom();
-            else loadChallengePair();
-        }
+        clearAutoTimer();
+        if (currentMode === "random") loadRandomPairRandom();
+        else loadChallengePair();
     }
 
-    // initialise
     function init() {
         remainingWords = [...wordBank];
         shuffleArray(remainingWords);
