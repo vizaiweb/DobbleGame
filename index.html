@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
-    <title>唯一匹配卡牌·射影平面挑战 | 双卡配对游戏</title>
+    <title>Unique Match · Pair Challenge | Dobble Game</title>
     <style>
         * {
             box-sizing: border-box;
@@ -173,21 +173,27 @@
             text-transform: capitalize;
         }
 
-        .option-btn:hover {
+        .option-btn:hover:not(:disabled) {
             background: #528a5e;
             transform: translateY(-2px);
             box-shadow: 0 6px 0 #1a3a22;
         }
 
-        .option-btn:active {
+        .option-btn:active:not(:disabled) {
             transform: translateY(2px);
             box-shadow: 0 1px 0 #1a3a22;
         }
 
+        .option-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            filter: grayscale(0.15);
+            transform: none;
+        }
+
         .disabled-btn {
-            opacity: 0.55;
+            opacity: 0.5;
             pointer-events: none;
-            filter: grayscale(0.1);
         }
 
         .feedback {
@@ -199,6 +205,7 @@
             background: #e7d6bd;
             margin-top: 0.8rem;
             color: #2d4a2a;
+            transition: 0.2s;
         }
 
         .next-btn {
@@ -233,6 +240,28 @@
             gap: 8px;
         }
 
+        .stats-panel {
+            background: #efe3cf;
+            padding: 6px 14px;
+            border-radius: 40px;
+            font-weight: bold;
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+            justify-content: center;
+            font-size: 0.8rem;
+        }
+
+        .stats-panel span {
+            color: #4b6b3e;
+        }
+
+        .stats-panel .stat-value {
+            color: #b45f1b;
+            font-size: 1rem;
+            margin-left: 4px;
+        }
+
         .refresh-icon {
             background: #b87c3a;
             border-radius: 40px;
@@ -263,6 +292,10 @@
             .question-text {
                 font-size: 1rem;
             }
+            .stats-panel {
+                font-size: 0.7rem;
+                gap: 0.6rem;
+            }
         }
 
         .card-glow {
@@ -278,55 +311,60 @@
 </head>
 <body>
 <div class="game-container" id="gameRoot">
-    <h1>🔷 唯一共鸣 · 配对挑战 🔶</h1>
-    <div style="text-align:center;"><span class="sub">每两张卡牌 · 仅共享一个单词</span></div>
+    <h1>🔷 Unique Match · Pair Challenge 🔶</h1>
+    <div style="text-align:center;"><span class="sub">Each pair shares ONE word</span></div>
 
     <div class="cards-row">
         <div class="card-item" id="cardLeft">
-            <div class="card-label">🎴 卡牌 A</div>
+            <div class="card-label">🎴 Card A</div>
             <div class="card-image" id="leftImageBox">
                 <img id="leftImg" src="" alt="card pattern">
             </div>
-            <div class="word-hint" id="leftWordHint">⚡ 共8个图案</div>
+            <div class="word-hint" id="leftWordHint">⚡ 8 icons</div>
         </div>
         <div class="card-item" id="cardRight">
-            <div class="card-label">🎴 卡牌 B</div>
+            <div class="card-label">🎴 Card B</div>
             <div class="card-image" id="rightImageBox">
                 <img id="rightImg" src="" alt="card pattern">
             </div>
-            <div class="word-hint" id="rightWordHint">⚡ 共8个图案</div>
+            <div class="word-hint" id="rightWordHint">⚡ 8 icons</div>
         </div>
     </div>
 
     <div class="quiz-area">
-        <div class="question-text">🧩 哪一个是这两张卡片「唯一共有」的单词？</div>
+        <div class="question-text">🧩 Which word is on BOTH cards?</div>
         <div class="options-grid" id="optionsContainer"></div>
-        <div class="feedback" id="feedbackMsg">✨ 点击上方单词按钮，寻找共同连结 ✨</div>
-        <button class="next-btn" id="nextPairBtn">🎲 随机新组合 🎲</button>
+        <div class="feedback" id="feedbackMsg">✨ Click a word to find the match ✨</div>
+        <button class="next-btn" id="nextPairBtn">🎲 New Pair 🎲</button>
         <div class="footer-stats">
-            <span>🃏 57张独特设计卡牌 | 数学射影平面</span>
-            <span class="refresh-icon" id="reshuffleBtn">🔄 重新开局</span>
+            <div class="stats-panel" id="statsPanel">
+                🎯 1st: <span id="stat1" class="stat-value">0</span>&nbsp;&nbsp;|&nbsp;
+                2nd: <span id="stat2" class="stat-value">0</span>&nbsp;&nbsp;|&nbsp;
+                3rd: <span id="stat3" class="stat-value">0</span>&nbsp;&nbsp;|&nbsp;
+                4th: <span id="stat4" class="stat-value">0</span>
+            </div>
+            <span class="refresh-icon" id="reshuffleBtn">🔄 Reset Game</span>
         </div>
     </div>
 </div>
 
 <script>
     // ==============================================================
-    // 1. 单词词库 (57个)
+    // 1. WORD BANK (57 words)
     // ==============================================================
     const wordBank = [
-    "eagle", "chick", "nest", "opossum", "honeybee", "crab", "squirrel", "mouse",
-    "frog", "giraffe", "elephant", "koala", "parrot", "sloth", "cheetah", "tree hollow",
-    "hive", "wood", "field", "pond", "jungle", "land", "grassland", "mountain",
-    "orangutan", "forest", "rainforest", "reserve", "teach", "take care of", "miss", "take a nap",
-    "put out", "day", "night", "morning", "midday", "afternoon", "evening", "animals",
-    "make", "homes", "places", "fox", "next to", "some", "live in", "have",
-    "people", "help", "bees", "food", "winter", "polar bears", "cold place", "all",
-    "many"
-];
+        "eagle", "chick", "nest", "opossum", "honeybee", "crab", "squirrel", "mouse",
+        "frog", "giraffe", "elephant", "koala", "parrot", "sloth", "cheetah", "tree hollow",
+        "hive", "wood", "field", "pond", "jungle", "land", "grassland", "mountain",
+        "orangutan", "forest", "rainforest", "reserve", "teach", "take care of", "miss", "take a nap",
+        "put out", "day", "night", "morning", "midday", "afternoon", "evening", "animals",
+        "make", "homes", "places", "fox", "next to", "some", "live in", "have",
+        "people", "help", "bees", "food", "winter", "polar bears", "cold place", "all",
+        "many"
+    ];
 
     // ==============================================================
-    // 2. 卡片数字组合 (57张, 0-based, 已按您给的1-based转换)
+    // 2. CARDS DATA (57 cards, 0-based from 1‑based user input)
     // ==============================================================
     const cardsDataRaw = [
         [0,1,2,3,4,5,6,7], [0,8,9,10,11,12,13,14], [0,15,16,17,18,19,20,21],
@@ -362,105 +400,96 @@
     }));
 
     // ==============================================================
-    // 3. 图片路径配置 - 您的图片命名为 1.png, 2.png ... 57.png
-    //    请根据您的实际仓库路径修改下面的 baseUrl
+    // 3. IMAGE URL (GitHub Pages relative path)
     // ==============================================================
-    
-    // 【重要】请将下面的路径改为您的实际图片存放位置
-    // 方案A：图片和 index.html 放在同一个文件夹内
-    // const baseUrl = './';
-    
-    // 方案B：图片放在 images 子文件夹内
-    // const baseUrl = 'images/';
-    
-    // 方案C：使用 GitHub raw 链接（推荐用于 GitHub Pages）
-    // 将 "您的用户名" 和 "仓库名" 替换成实际的
     const baseUrl = '/DobbleGame/images/';
-    
     function getCardImageUrl(cardId) {
-        // cardId 是 0-based，图片编号从 1 开始
         const cardNumber = cardId + 1;
         return `${baseUrl}${cardNumber}.png`;
     }
-
-    // 图片加载失败时的备用 SVG
     function getFallbackImageUrl(cardId) {
         const num = cardId + 1;
-        return `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200' viewBox='0 0 200 200'%3E%3Crect width='200' height='200' fill='%23e8d5b5'/%3E%3Ctext x='100' y='110' font-size='28' text-anchor='middle' fill='%2380552e' font-weight='bold'%3E${num}%3C/text%3E%3Ctext x='100' y='145' font-size='12' text-anchor='middle' fill='%23996e3e'%3E图片加载失败%3C/text%3E%3C/svg%3E`;
+        return `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200' viewBox='0 0 200 200'%3E%3Crect width='200' height='200' fill='%23e8d5b5'/%3E%3Ctext x='100' y='110' font-size='28' text-anchor='middle' fill='%2380552e' font-weight='bold'%3E${num}%3C/text%3E%3Ctext x='100' y='145' font-size='12' text-anchor='middle' fill='%23996e3e'%3Eno image%3C/text%3E%3C/svg%3E`;
     }
-
-    // 预生成图片URL列表
     const cardImageUrls = cards.map((_, idx) => getCardImageUrl(idx));
 
     // ==============================================================
-    // 4. 游戏逻辑
+    // 4. GAME STATE
     // ==============================================================
     let currentLeftCard = null;
     let currentRightCard = null;
     let currentCommonWord = null;
-    let answered = false;
+    let answered = false;          // true if round finished (correct answer given)
     let currentOptions = [];
-
-    function findCommonWord(cardA, cardB) {
-        const setA = new Set(cardA.words);
-        for (let w of cardB.words) {
-            if (setA.has(w)) return w;
-        }
-        return null;
+    let attemptCount = 0;          // number of different button clicks this round (before correct)
+    let autoTimer = null;
+    
+    // Statistics: how many times solved in 1st, 2nd, 3rd, 4th attempt
+    let stats = { 1: 0, 2: 0, 3: 0, 4: 0 };
+    
+    // Audio elements (mp3 files in root/sounds folder – change path if needed)
+    const rightAudio = new Audio('sounds/right.mp3');
+    const wrongAudio = new Audio('sounds/wrong.mp3');
+    
+    // Speech synthesis
+    function speakWord(word) {
+        if (!window.speechSynthesis) return;
+        const utterance = new SpeechSynthesisUtterance(word);
+        utterance.lang = 'en-US';
+        utterance.rate = 0.9;
+        utterance.pitch = 1.0;
+        // Select natural voice if available
+        window.speechSynthesis.cancel(); // avoid overlapping
+        window.speechSynthesis.speak(utterance);
     }
-
-    function generateOptions(correctWord) {
-        let opts = new Set();
-        opts.add(correctWord);
-        let candidates = wordBank.filter(w => w !== correctWord);
-        for (let i = candidates.length - 1; i > 0; i--) {
-            const j = Math.floor(Math.random() * (i + 1));
-            [candidates[i], candidates[j]] = [candidates[j], candidates[i]];
-        }
-        while (opts.size < 4 && candidates.length) {
-            opts.add(candidates.pop());
-        }
-        return Array.from(opts).sort(() => Math.random() - 0.5);
+    
+    // Update stats UI
+    function updateStatsUI() {
+        document.getElementById('stat1').innerText = stats[1];
+        document.getElementById('stat2').innerText = stats[2];
+        document.getElementById('stat3').innerText = stats[3];
+        document.getElementById('stat4').innerText = stats[4];
     }
-
-    function renderOptions(options) {
-        const container = document.getElementById('optionsContainer');
-        container.innerHTML = '';
-        options.forEach(word => {
-            const btn = document.createElement('button');
-            btn.className = 'option-btn';
-            btn.innerText = word;
-            btn.addEventListener('click', () => {
-                if (answered) {
-                    document.getElementById('feedbackMsg').innerHTML = '⏳ 已经作答过了，点击「随机新组合」继续挑战！';
-                    return;
-                }
-                const isCorrect = (word === currentCommonWord);
-                const feedbackDiv = document.getElementById('feedbackMsg');
-                if (isCorrect) {
-                    feedbackDiv.innerHTML = `✅ 完美！共同单词就是 “${currentCommonWord}”！ 🎉`;
-                    feedbackDiv.style.background = "#cae3b5";
-                    document.getElementById('cardLeft').classList.add('card-glow');
-                    document.getElementById('cardRight').classList.add('card-glow');
-                    setTimeout(() => {
-                        document.getElementById('cardLeft').classList.remove('card-glow');
-                        document.getElementById('cardRight').classList.remove('card-glow');
-                    }, 700);
-                } else {
-                    feedbackDiv.innerHTML = `❌ “${word}” 不是共有单词。正确答案是 “${currentCommonWord}”。`;
-                    feedbackDiv.style.background = "#f5ddbc";
-                }
-                answered = true;
-                document.querySelectorAll('.option-btn').forEach(btn => {
-                    btn.classList.add('disabled-btn');
-                    btn.disabled = true;
-                });
-            });
-            container.appendChild(btn);
+    
+    // Reset all statistics
+    function resetStats() {
+        stats = { 1: 0, 2: 0, 3: 0, 4: 0 };
+        updateStatsUI();
+    }
+    
+    // Record correct answer based on attemptCount (1 to 4)
+    function recordCorrectAttempt() {
+        let attemptsUsed = Math.min(attemptCount, 4);
+        if (attemptsUsed >= 1 && attemptsUsed <= 4) {
+            stats[attemptsUsed]++;
+        } else {
+            // fallback: if something weird, count as 4th try
+            stats[4]++;
+        }
+        updateStatsUI();
+    }
+    
+    // Disable all option buttons (when round ends)
+    function disableAllOptions() {
+        const allBtns = document.querySelectorAll('.option-btn');
+        allBtns.forEach(btn => {
+            btn.disabled = true;
         });
     }
-
+    
+    // Clear timer if exists
+    function clearAutoTimer() {
+        if (autoTimer) {
+            clearTimeout(autoTimer);
+            autoTimer = null;
+        }
+    }
+    
+    // Load next random pair (new round)
     function loadRandomPair() {
+        // cancel any pending auto jump
+        clearAutoTimer();
+        
         let idxA = Math.floor(Math.random() * cards.length);
         let idxB = Math.floor(Math.random() * cards.length);
         while (idxA === idxB) {
@@ -470,42 +499,163 @@
         currentRightCard = cards[idxB];
         currentCommonWord = findCommonWord(currentLeftCard, currentRightCard);
         answered = false;
-
+        attemptCount = 0;    // fresh attempt counter for this round
+        
+        // Update images
         const leftImg = document.getElementById('leftImg');
         const rightImg = document.getElementById('rightImg');
-        
         leftImg.onerror = function() { this.onerror = null; this.src = getFallbackImageUrl(currentLeftCard.id); };
         rightImg.onerror = function() { this.onerror = null; this.src = getFallbackImageUrl(currentRightCard.id); };
-        
         leftImg.src = cardImageUrls[currentLeftCard.id];
         rightImg.src = cardImageUrls[currentRightCard.id];
         
-        document.getElementById('leftWordHint').innerHTML = `📖 包含 ${currentLeftCard.words.length} 个图案`;
-        document.getElementById('rightWordHint').innerHTML = `📖 包含 ${currentRightCard.words.length} 个图案`;
+        document.getElementById('leftWordHint').innerHTML = `📖 ${currentLeftCard.words.length} icons`;
+        document.getElementById('rightWordHint').innerHTML = `📖 ${currentRightCard.words.length} icons`;
         
+        // Generate fresh options
         currentOptions = generateOptions(currentCommonWord);
         renderOptions(currentOptions);
         
         const feedbackDiv = document.getElementById('feedbackMsg');
-        feedbackDiv.innerHTML = '🔍 选择下方单词，找出两张卡片的唯一相同词！';
+        feedbackDiv.innerHTML = '🔍 Pick the word that appears on both cards.';
         feedbackDiv.style.background = "#e7d6bd";
-        
-        document.querySelectorAll('.option-btn').forEach(btn => {
-            btn.classList.remove('disabled-btn');
-            btn.disabled = false;
+    }
+    
+    // Find common word between two cards (guaranteed by design)
+    function findCommonWord(cardA, cardB) {
+        const setA = new Set(cardA.words);
+        for (let w of cardB.words) {
+            if (setA.has(w)) return w;
+        }
+        return null;
+    }
+    
+    // Generate 4 options (correct + 3 random distinct)
+    function generateOptions(correctWord) {
+        let opts = new Set();
+        opts.add(correctWord);
+        let candidates = wordBank.filter(w => w !== correctWord);
+        // shuffle candidates
+        for (let i = candidates.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [candidates[i], candidates[j]] = [candidates[j], candidates[i]];
+        }
+        while (opts.size < 4 && candidates.length) {
+            opts.add(candidates.pop());
+        }
+        return Array.from(opts).sort(() => Math.random() - 0.5);
+    }
+    
+    // Render option buttons, each with proper disabled state depending on round status
+    function renderOptions(options) {
+        const container = document.getElementById('optionsContainer');
+        container.innerHTML = '';
+        options.forEach(word => {
+            const btn = document.createElement('button');
+            btn.className = 'option-btn';
+            btn.innerText = word;
+            // initially enabled (unless round already finished)
+            btn.disabled = answered;
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                // If round already finished, ignore
+                if (answered) {
+                    document.getElementById('feedbackMsg').innerHTML = '⏳ Round finished. Click "New Pair" to continue.';
+                    return;
+                }
+                // Disable this specific button immediately (can't click same twice)
+                if (btn.disabled) return;
+                btn.disabled = true;
+                
+                // 1) Speak the word
+                speakWord(word);
+                
+                // 2) Increment attempt count (only if this word hasn't been chosen before)
+                //    But we disabled the button, so each unique word can be clicked at most once.
+                attemptCount++;
+                
+                // 3) Check correctness
+                const isCorrect = (word === currentCommonWord);
+                const feedbackDiv = document.getElementById('feedbackMsg');
+                
+                if (isCorrect) {
+                    // CORRECT ANSWER
+                    // Play correct sound
+                    rightAudio.play().catch(e => console.log("Audio play error:", e));
+                    feedbackDiv.innerHTML = `✅ Perfect! Common word is "${currentCommonWord}"! 🎉`;
+                    feedbackDiv.style.background = "#cae3b5";
+                    // Visual glow effect
+                    document.getElementById('cardLeft').classList.add('card-glow');
+                    document.getElementById('cardRight').classList.add('card-glow');
+                    setTimeout(() => {
+                        document.getElementById('cardLeft').classList.remove('card-glow');
+                        document.getElementById('cardRight').classList.remove('card-glow');
+                    }, 700);
+                    
+                    // Record statistics based on attempts used in this round
+                    recordCorrectAttempt();
+                    
+                    // Mark round as finished, disable any remaining buttons
+                    answered = true;
+                    disableAllOptions();
+                    
+                    // Schedule auto next round after 2 seconds
+                    clearAutoTimer();
+                    autoTimer = setTimeout(() => {
+                        loadRandomPair();
+                        autoTimer = null;
+                    }, 2000);
+                } else {
+                    // WRONG ANSWER
+                    wrongAudio.play().catch(e => console.log("Audio play error:", e));
+                    feedbackDiv.innerHTML = `❌ "${word}" is not the common word. Keep trying!`;
+                    feedbackDiv.style.background = "#f5ddbc";
+                    // Do NOT disable other buttons, only the clicked one is already disabled.
+                    // The round continues, attemptCount already increased.
+                    // No need to change answered flag.
+                }
+            });
+            container.appendChild(btn);
         });
     }
-
+    
+    // Manual refresh / reset everything (stats + new pair)
     function refreshGame() {
+        clearAutoTimer();
+        resetStats();
         loadRandomPair();
     }
-
+    
+    // Manual new pair without resetting stats
+    function nextPair() {
+        if (autoTimer) {
+            // if there's a pending auto jump, cancel it because user manually requests new pair
+            clearAutoTimer();
+        }
+        loadRandomPair();
+    }
+    
+    // Reset game fully (stats + new pair)
+    function resetGame() {
+        refreshGame();
+    }
+    
+    // Initialize event listeners and first load
     function init() {
         loadRandomPair();
-        document.getElementById('nextPairBtn').addEventListener('click', refreshGame);
-        document.getElementById('reshuffleBtn').addEventListener('click', refreshGame);
+        document.getElementById('nextPairBtn').addEventListener('click', () => {
+            if (autoTimer) clearAutoTimer();
+            nextPair();
+        });
+        document.getElementById('reshuffleBtn').addEventListener('click', () => {
+            if (autoTimer) clearAutoTimer();
+            resetGame();
+        });
+        // Preload audio to help unlock autoplay on first user interaction
+        // Not required but gentle.
     }
-
+    
+    // Start the game
     init();
 </script>
 </body>
