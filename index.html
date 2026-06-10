@@ -146,6 +146,35 @@
             box-shadow: 0 2px 8px rgba(0,0,0,0.1);
         }
 
+        /* 加载中占位图样式 */
+        .loading-placeholder {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: #e8d8c0;
+            border-radius: 28px;
+            gap: 12px;
+        }
+        .loading-spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid #c2a56d;
+            border-top-color: #e09d32;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        .loading-text {
+            font-size: 14px;
+            color: #8b6946;
+            font-weight: 500;
+        }
+
         .word-hint {
             margin-top: 0.7rem;
             font-size: 0.85rem;
@@ -232,8 +261,8 @@
             transition: 0.2s;
         }
 
-        .next-btn {
-            background: #e09d32;
+        .skip-btn {
+            background: #b87c3a;
             border: none;
             font-size: 1.2rem;
             font-weight: bold;
@@ -244,15 +273,15 @@
             display: block;
             margin: 1rem auto 0.2rem;
             transition: 0.07s linear;
-            box-shadow: 0 5px 0 #9b5e1a;
+            box-shadow: 0 5px 0 #7b4a1a;
             width: fit-content;
         }
 
-        .next-btn:active {
+        .skip-btn:active {
             transform: translateY(2px);
-            box-shadow: 0 2px 0 #9b5e1a;
+            box-shadow: 0 2px 0 #7b4a1a;
         }
-        .next-btn:disabled {
+        .skip-btn:disabled {
             opacity: 0.5;
             cursor: not-allowed;
             transform: none;
@@ -388,7 +417,7 @@
         <div class="question-text">🧩 Which word is on BOTH cards?</div>
         <div class="options-grid" id="optionsContainer"></div>
         <div class="feedback" id="feedbackMsg">✨ Click a word to find the match ✨</div>
-        <button class="next-btn" id="skipBtn">⏭️ Skip</button>
+        <button class="skip-btn" id="skipBtn">⏭️ Skip</button>
         <div class="footer-stats">
             <div class="stats-panel" id="statsPanel">
                 <span>1st: <span id="stat1" class="stat-value">0</span></span>
@@ -465,7 +494,6 @@
         const num = cardId+1;
         return `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200' viewBox='0 0 200 200'%3E%3Crect width='200' height='200' fill='%23e8d5b5'/%3E%3Ctext x='100' y='110' font-size='28' text-anchor='middle' fill='%2380552e' font-weight='bold'%3E${num}%3C/text%3E%3Ctext x='100' y='145' font-size='12' text-anchor='middle' fill='%23996e3e'%3Eno image%3C/text%3E%3C/svg%3E`;
     }
-    const cardImageUrls = cards.map((_, idx) => getCardImageUrl(idx));
 
     // --------------------------------------------------------------
     // 4. GAME STATE
@@ -474,8 +502,10 @@
     let stats = { 1:0, 2:0, 3:0, 4:0, skip:0 };
     let roundsCompleted = 0;
     let remainingWords = [];
-    let currentLeftCard = null, currentRightCard = null, currentCommonWord = null;
+    let currentPair = null;      // { cardA, cardB, commonWord }
+    let nextPair = null;         // preloaded next pair
     let answered = false, attemptCount = 0, autoTimer = null, currentOptions = [];
+    let isTransitioning = false;  // prevent multiple transitions
     
     // Audio & speech
     const rightAudio = new Audio('sounds/right.mp3');
@@ -504,94 +534,166 @@
             progressDiv.innerHTML = `Progress: <span class="progress-count">${roundsCompleted}</span> / 57`;
         }
     }
-    function incrementRoundAndSkip() {
-        roundsCompleted++;
-        stats.skip++;
-        updateStatsUI();
-        updateProgressUI();
+    
+    function showLoadingImages() {
+        const leftContainer = document.getElementById('leftImageBox');
+        const rightContainer = document.getElementById('rightImageBox');
+        leftContainer.innerHTML = `<div class="loading-placeholder"><div class="loading-spinner"></div><div class="loading-text">Loading...</div></div>`;
+        rightContainer.innerHTML = `<div class="loading-placeholder"><div class="loading-spinner"></div><div class="loading-text">Loading...</div></div>`;
     }
-    function resetGameState(resetStatsAndProgress = true) {
-        clearAutoTimer();
-        if (resetStatsAndProgress) {
-            stats = { 1:0, 2:0, 3:0, 4:0, skip:0 };
-            roundsCompleted = 0;
-            if (currentMode === "challenge") {
-                remainingWords = [...wordBank];
-                shuffleArray(remainingWords);
-            }
-            updateStatsUI();
-            updateProgressUI();
+    
+    function displayCardImages(cardA, cardB) {
+        const leftContainer = document.getElementById('leftImageBox');
+        const rightContainer = document.getElementById('rightImageBox');
+        const leftImg = document.createElement('img');
+        const rightImg = document.createElement('img');
+        leftImg.id = 'leftImg';
+        rightImg.id = 'rightImg';
+        leftImg.alt = 'card pattern';
+        rightImg.alt = 'card pattern';
+        leftContainer.innerHTML = '';
+        rightContainer.innerHTML = '';
+        leftContainer.appendChild(leftImg);
+        rightContainer.appendChild(rightImg);
+        
+        leftImg.onerror = function() { this.onerror = null; this.src = getFallbackImageUrl(cardA.id); };
+        rightImg.onerror = function() { this.onerror = null; this.src = getFallbackImageUrl(cardB.id); };
+        leftImg.src = getCardImageUrl(cardA.id);
+        rightImg.src = getCardImageUrl(cardB.id);
+        
+        document.getElementById('leftWordHint').innerHTML = `📖 ${cardA.words.length} icons`;
+        document.getElementById('rightWordHint').innerHTML = `📖 ${cardB.words.length} icons`;
+    }
+    
+    function preloadImages(cardA, cardB, onComplete) {
+        let loadedCount = 0;
+        const total = 2;
+        function checkComplete() {
+            loadedCount++;
+            if (loadedCount === total && onComplete) onComplete();
         }
-        answered = false;
-        attemptCount = 0;
-        enableSkipButton(true);
-        if (currentMode === "random") loadRandomPairRandom();
-        else loadChallengePair();
+        const imgA = new Image();
+        const imgB = new Image();
+        imgA.onload = checkComplete;
+        imgA.onerror = checkComplete;
+        imgB.onload = checkComplete;
+        imgB.onerror = checkComplete;
+        imgA.src = getCardImageUrl(cardA.id);
+        imgB.src = getCardImageUrl(cardB.id);
     }
-    function shuffleArray(arr) { for (let i = arr.length - 1; i > 0; i--) { const j = Math.floor(Math.random()*(i+1)); [arr[i], arr[j]] = [arr[j], arr[i]]; } }
-    function clearAutoTimer() { if (autoTimer) { clearTimeout(autoTimer); autoTimer = null; } }
-    function disableAllOptions() { document.querySelectorAll('.option-btn').forEach(btn => btn.disabled = true); }
-    function enableSkipButton(enabled) { 
-        const skipBtn = document.getElementById('skipBtn');
-        if (skipBtn) skipBtn.disabled = !enabled;
-    }
-
-    function findCardsForWord(word) {
-        const candidates = cards.filter(card => card.words.includes(word));
-        if (candidates.length < 2) return null;
-        let idxA = Math.floor(Math.random() * candidates.length);
-        let idxB = Math.floor(Math.random() * candidates.length);
-        while (idxA === idxB && candidates.length > 1) idxB = Math.floor(Math.random() * candidates.length);
-        return [candidates[idxA], candidates[idxB]];
-    }
-
-    function loadRandomPairRandom() {
-        if (currentMode !== "random") return;
-        clearAutoTimer();
+    
+    function generateRandomPair() {
         let idxA = Math.floor(Math.random() * cards.length);
         let idxB = Math.floor(Math.random() * cards.length);
         while (idxA === idxB) idxB = Math.floor(Math.random() * cards.length);
-        currentLeftCard = cards[idxA];
-        currentRightCard = cards[idxB];
-        currentCommonWord = findCommonWord(currentLeftCard, currentRightCard);
-        answered = false; attemptCount = 0;
-        enableSkipButton(true);
-        updateCardImages();
-        currentOptions = generateOptions(currentCommonWord);
-        renderOptions(currentOptions);
-        document.getElementById('feedbackMsg').innerHTML = '🔍 Pick the word that appears on both cards.';
-        document.getElementById('feedbackMsg').style.background = "#e7d6bd";
+        const cardA = cards[idxA];
+        const cardB = cards[idxB];
+        const commonWord = findCommonWord(cardA, cardB);
+        return { cardA, cardB, commonWord };
     }
-
-    function loadChallengePair() {
-        if (currentMode !== "challenge") return;
-        clearAutoTimer();
-        if (remainingWords.length === 0) {
-            document.getElementById('feedbackMsg').innerHTML = '🏆 Amazing! You completed all 57 words! 🏆 Press Reset to play again.';
-            document.getElementById('feedbackMsg').style.background = "#f0d89e";
-            answered = true; 
-            disableAllOptions();
-            enableSkipButton(false);
-            return;
-        }
+    
+    function generateChallengePair() {
+        if (remainingWords.length === 0) return null;
         const wordIndex = Math.floor(Math.random() * remainingWords.length);
         const selectedWord = remainingWords[wordIndex];
-        const cardPair = findCardsForWord(selectedWord);
-        if (!cardPair) {
-            remainingWords.splice(wordIndex,1);
-            loadChallengePair();
-            return;
+        const candidates = cards.filter(card => card.words.includes(selectedWord));
+        if (candidates.length < 2) {
+            remainingWords.splice(wordIndex, 1);
+            return generateChallengePair();
         }
-        currentLeftCard = cardPair[0];
-        currentRightCard = cardPair[1];
-        currentCommonWord = selectedWord;
-        answered = false; attemptCount = 0;
+        let idxA = Math.floor(Math.random() * candidates.length);
+        let idxB = Math.floor(Math.random() * candidates.length);
+        while (idxA === idxB && candidates.length > 1) idxB = Math.floor(Math.random() * candidates.length);
+        const cardA = candidates[idxA];
+        const cardB = candidates[idxB];
+        return { cardA, cardB, commonWord: selectedWord, usedWord: selectedWord };
+    }
+    
+    function consumeCurrentAndPrepareNext() {
+        // 从剩余单词池中移除当前使用的单词（挑战模式）
+        if (currentMode === "challenge" && currentPair && currentPair.usedWord !== undefined) {
+            const idx = remainingWords.indexOf(currentPair.usedWord);
+            if (idx !== -1) remainingWords.splice(idx, 1);
+        }
+        // 更新进度
+        roundsCompleted++;
+        updateProgressUI();
+        
+        // 切换到下一组
+        if (nextPair) {
+            currentPair = nextPair;
+            displayCardImages(currentPair.cardA, currentPair.cardB);
+            currentCommonWord = currentPair.commonWord;
+            // 预生成再下一组
+            prepareNextPair();
+        } else {
+            // 如果没有预加载（首次或出错），直接生成
+            if (currentMode === "random") {
+                currentPair = generateRandomPair();
+            } else {
+                currentPair = generateChallengePair();
+                if (!currentPair) {
+                    // 游戏结束
+                    document.getElementById('feedbackMsg').innerHTML = '🏆 Challenge completed! Press Reset to play again. 🏆';
+                    return;
+                }
+            }
+            displayCardImages(currentPair.cardA, currentPair.cardB);
+            currentCommonWord = currentPair.commonWord;
+            prepareNextPair();
+        }
+        
+        // 重置状态
+        answered = false;
+        attemptCount = 0;
         enableSkipButton(true);
-        updateCardImages();
         currentOptions = generateOptions(currentCommonWord);
         renderOptions(currentOptions);
         document.getElementById('feedbackMsg').innerHTML = '🔍 Pick the word that appears on both cards.';
         document.getElementById('feedbackMsg').style.background = "#e7d6bd";
+        isTransitioning = false;
+    }
+    
+    function prepareNextPair() {
+        if (currentMode === "random") {
+            const newPair = generateRandomPair();
+            nextPair = newPair;
+            preloadImages(nextPair.cardA, nextPair.cardB, () => {});
+        } else {
+            if (remainingWords.length > 0) {
+                const newPair = generateChallengePair();
+                if (newPair) {
+                    nextPair = newPair;
+                    preloadImages(nextPair.cardA, nextPair.cardB, () => {});
+                } else {
+                    nextPair = null;
+                }
+            } else {
+                nextPair = null;
+            }
+        }
+    }
+    
+    function loadInitialPair() {
+        showLoadingImages();
+        if (currentMode === "random") {
+            currentPair = generateRandomPair();
+        } else {
+            currentPair = generateChallengePair();
+            if (!currentPair) return;
+        }
+        currentCommonWord = currentPair.commonWord;
+        preloadImages(currentPair.cardA, currentPair.cardB, () => {
+            displayCardImages(currentPair.cardA, currentPair.cardB);
+            prepareNextPair();
+            answered = false;
+            attemptCount = 0;
+            enableSkipButton(true);
+            currentOptions = generateOptions(currentCommonWord);
+            renderOptions(currentOptions);
+            document.getElementById('feedbackMsg').innerHTML = '🔍 Pick the word that appears on both cards.';
+            document.getElementById('feedbackMsg').style.background = "#e7d6bd";
+        });
     }
 
     function findCommonWord(cardA, cardB) {
@@ -602,61 +704,83 @@
     function generateOptions(correctWord) {
         let opts = new Set([correctWord]);
         let candidates = wordBank.filter(w => w !== correctWord);
-        shuffleArray(candidates);
+        for (let i = candidates.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [candidates[i], candidates[j]] = [candidates[j], candidates[i]];
+        }
         while (opts.size < 4 && candidates.length) opts.add(candidates.pop());
         return Array.from(opts).sort(() => Math.random() - 0.5);
     }
-    function updateCardImages() {
-        const leftImg = document.getElementById('leftImg');
-        const rightImg = document.getElementById('rightImg');
-        leftImg.onerror = function() { this.onerror = null; this.src = getFallbackImageUrl(currentLeftCard.id); };
-        rightImg.onerror = function() { this.onerror = null; this.src = getFallbackImageUrl(currentRightCard.id); };
-        leftImg.src = cardImageUrls[currentLeftCard.id];
-        rightImg.src = cardImageUrls[currentRightCard.id];
-        document.getElementById('leftWordHint').innerHTML = `📖 ${currentLeftCard.words.length} icons`;
-        document.getElementById('rightWordHint').innerHTML = `📖 ${currentRightCard.words.length} icons`;
-    }
+    
     function recordCorrectAttempt() {
         let attemptsUsed = Math.min(attemptCount, 4);
         stats[attemptsUsed]++;
         updateStatsUI();
-        if (currentMode === "challenge") {
-            const idx = remainingWords.indexOf(currentCommonWord);
-            if (idx !== -1) remainingWords.splice(idx,1);
-            roundsCompleted = 57 - remainingWords.length;
-            updateProgressUI();
-        } else {
-            roundsCompleted++;
-            updateProgressUI();
-        }
     }
-    function handleSkip() {
-        if (answered) return;
-        clearAutoTimer();
-        if (currentMode === "challenge") {
-            const idx = remainingWords.indexOf(currentCommonWord);
-            if (idx !== -1) remainingWords.splice(idx,1);
-        }
-        roundsCompleted++;
-        stats.skip++;
-        updateStatsUI();
-        updateProgressUI();
+    
+    function handleCorrect() {
+        rightAudio.play().catch(e=>console.log);
+        document.getElementById('feedbackMsg').innerHTML = `✅ Perfect! Common word is "${currentCommonWord}"! 🎉`;
+        document.getElementById('feedbackMsg').style.background = "#cae3b5";
+        document.getElementById('cardLeft').classList.add('card-glow');
+        document.getElementById('cardRight').classList.add('card-glow');
+        setTimeout(() => {
+            document.getElementById('cardLeft').classList.remove('card-glow');
+            document.getElementById('cardRight').classList.remove('card-glow');
+        }, 700);
+        recordCorrectAttempt();
         answered = true;
         disableAllOptions();
         enableSkipButton(false);
-        const feedbackDiv = document.getElementById('feedbackMsg');
-        feedbackDiv.innerHTML = `⏭️ Skipped! The common word was "${currentCommonWord}".`;
-        feedbackDiv.style.background = "#f5ddbc";
+        
+        if (currentMode === "challenge" && remainingWords.length === 1 && currentPair.usedWord) {
+            const idx = remainingWords.indexOf(currentPair.usedWord);
+            if (idx !== -1) remainingWords.splice(idx, 1);
+            roundsCompleted = 57 - remainingWords.length;
+            updateProgressUI();
+            if (remainingWords.length === 0) {
+                document.getElementById('feedbackMsg').innerHTML = '🏆 Challenge completed! Press Reset to play again. 🏆';
+                return;
+            }
+        }
+        
+        clearAutoTimer();
+        autoTimer = setTimeout(() => {
+            if (isTransitioning) return;
+            isTransitioning = true;
+            consumeCurrentAndPrepareNext();
+            autoTimer = null;
+        }, 2000);
+    }
+    
+    function handleSkip() {
+        if (answered || isTransitioning) return;
+        clearAutoTimer();
+        stats.skip++;
+        updateStatsUI();
+        
+        document.getElementById('feedbackMsg').innerHTML = `⏭️ Skipped! The common word was "${currentCommonWord}".`;
+        document.getElementById('feedbackMsg').style.background = "#f5ddbc";
+        answered = true;
+        disableAllOptions();
+        enableSkipButton(false);
+        
         if (currentMode === "challenge" && remainingWords.length === 0) {
-            feedbackDiv.innerHTML = '🏆 Challenge completed! Press Reset to play again. 🏆';
+            // 已经完成
             return;
         }
-        autoTimer = setTimeout(() => {
-            if (currentMode === "random") loadRandomPairRandom();
-            else loadChallengePair();
-            autoTimer = null;
-        }, 1500);
+        
+        isTransitioning = true;
+        consumeCurrentAndPrepareNext();
     }
+    
+    function disableAllOptions() { document.querySelectorAll('.option-btn').forEach(btn => btn.disabled = true); }
+    function enableSkipButton(enabled) { 
+        const skipBtn = document.getElementById('skipBtn');
+        if (skipBtn) skipBtn.disabled = !enabled;
+    }
+    function clearAutoTimer() { if (autoTimer) { clearTimeout(autoTimer); autoTimer = null; } }
+    
     function renderOptions(options) {
         const container = document.getElementById('optionsContainer');
         container.innerHTML = '';
@@ -667,7 +791,7 @@
             btn.disabled = answered;
             btn.addEventListener('click', (e) => {
                 e.stopPropagation();
-                if (answered) {
+                if (answered || isTransitioning) {
                     document.getElementById('feedbackMsg').innerHTML = '⏳ Round finished. Click "Skip" to continue.';
                     return;
                 }
@@ -675,36 +799,12 @@
                 btn.disabled = true;
                 speakWord(word);
                 attemptCount++;
-                const isCorrect = (word === currentCommonWord);
-                const feedbackDiv = document.getElementById('feedbackMsg');
-                if (isCorrect) {
-                    rightAudio.play().catch(e=>console.log);
-                    feedbackDiv.innerHTML = `✅ Perfect! Common word is "${currentCommonWord}"! 🎉`;
-                    feedbackDiv.style.background = "#cae3b5";
-                    document.getElementById('cardLeft').classList.add('card-glow');
-                    document.getElementById('cardRight').classList.add('card-glow');
-                    setTimeout(() => {
-                        document.getElementById('cardLeft').classList.remove('card-glow');
-                        document.getElementById('cardRight').classList.remove('card-glow');
-                    }, 700);
-                    recordCorrectAttempt();
-                    answered = true;
-                    disableAllOptions();
-                    enableSkipButton(false);
-                    if (currentMode === "challenge" && remainingWords.length === 0) {
-                        feedbackDiv.innerHTML = '🏆 Challenge completed! Press Reset to play again. 🏆';
-                        return;
-                    }
-                    clearAutoTimer();
-                    autoTimer = setTimeout(() => {
-                        if (currentMode === "random") loadRandomPairRandom();
-                        else loadChallengePair();
-                        autoTimer = null;
-                    }, 2000);
+                if (word === currentCommonWord) {
+                    handleCorrect();
                 } else {
                     wrongAudio.play().catch(e=>console.log);
-                    feedbackDiv.innerHTML = `❌ "${word}" is not correct. Keep trying!`;
-                    feedbackDiv.style.background = "#f5ddbc";
+                    document.getElementById('feedbackMsg').innerHTML = `❌ "${word}" is not correct. Keep trying!`;
+                    document.getElementById('feedbackMsg').style.background = "#f5ddbc";
                 }
             });
             container.appendChild(btn);
@@ -712,30 +812,28 @@
     }
 
     function switchMode(newMode) {
-        if (currentMode === newMode) return;
+        if (currentMode === newMode || isTransitioning) return;
+        const confirmSwitch = confirm(`Switch to ${newMode === "random" ? "Random Mode" : "Challenge Mode"}? Stats and progress will reset.\n\n${newMode === "random" ? "[Random Mode]\nCards are completely random. Same word may appear many times. No fixed ending." : "[Challenge Mode]\nEach of the 57 words appears exactly once. Complete all 57 rounds to win."}`);
+        if (!confirmSwitch) return;
         
-        let message = "";
-        if (newMode === "random") {
-            message = "Switch to Random Mode?\n\nStats and progress will reset.\n\n[Random Mode]\nCards are completely random. Same word may appear many times. No fixed ending. Play as long as you like.";
-        } else {
-            message = "Switch to Challenge Mode?\n\nStats and progress will reset.\n\n[Challenge Mode]\nEach of the 57 words appears exactly once. Complete all 57 rounds to win. Words are randomized.";
-        }
-        
-        const confirmed = confirm(message);
-        if (!confirmed) return;
-        
+        clearAutoTimer();
         currentMode = newMode;
         stats = { 1:0, 2:0, 3:0, 4:0, skip:0 };
         roundsCompleted = 0;
         if (currentMode === "challenge") {
             remainingWords = [...wordBank];
-            shuffleArray(remainingWords);
+            for (let i = remainingWords.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [remainingWords[i], remainingWords[j]] = [remainingWords[j], remainingWords[i]];
+            }
         }
         updateStatsUI();
         updateProgressUI();
-        answered = false; attemptCount = 0; clearAutoTimer();
-        if (currentMode === "random") loadRandomPairRandom();
-        else loadChallengePair();
+        answered = false;
+        attemptCount = 0;
+        isTransitioning = false;
+        nextPair = null;
+        loadInitialPair();
         
         document.getElementById('randomModeBtn').classList.toggle('active', currentMode === "random");
         document.getElementById('challengeModeBtn').classList.toggle('active', currentMode === "challenge");
@@ -743,34 +841,36 @@
 
     function resetGame() {
         clearAutoTimer();
-        if (currentMode === "random") {
-            stats = { 1:0, 2:0, 3:0, 4:0, skip:0 };
-            roundsCompleted = 0;
-            updateStatsUI(); updateProgressUI();
-            loadRandomPairRandom();
-        } else {
-            stats = { 1:0, 2:0, 3:0, 4:0, skip:0 };
-            roundsCompleted = 0;
+        isTransitioning = false;
+        stats = { 1:0, 2:0, 3:0, 4:0, skip:0 };
+        roundsCompleted = 0;
+        if (currentMode === "challenge") {
             remainingWords = [...wordBank];
-            shuffleArray(remainingWords);
-            updateStatsUI(); updateProgressUI();
-            loadChallengePair();
+            for (let i = remainingWords.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [remainingWords[i], remainingWords[j]] = [remainingWords[j], remainingWords[i]];
+            }
         }
-    }
-
-    function skipAction() {
-        if (answered) return;
-        clearAutoTimer();
-        handleSkip();
+        updateStatsUI();
+        updateProgressUI();
+        answered = false;
+        attemptCount = 0;
+        nextPair = null;
+        loadInitialPair();
     }
 
     function init() {
-        remainingWords = [...wordBank];
-        shuffleArray(remainingWords);
-        loadRandomPairRandom();
+        if (currentMode === "challenge") {
+            remainingWords = [...wordBank];
+            for (let i = remainingWords.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [remainingWords[i], remainingWords[j]] = [remainingWords[j], remainingWords[i]];
+            }
+        }
+        loadInitialPair();
         document.getElementById('randomModeBtn').addEventListener('click', () => switchMode("random"));
         document.getElementById('challengeModeBtn').addEventListener('click', () => switchMode("challenge"));
-        document.getElementById('skipBtn').addEventListener('click', () => { skipAction(); });
+        document.getElementById('skipBtn').addEventListener('click', () => { if (!isTransitioning && !answered) handleSkip(); });
         document.getElementById('reshuffleBtn').addEventListener('click', () => { clearAutoTimer(); resetGame(); });
     }
     init();
