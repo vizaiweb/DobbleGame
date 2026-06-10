@@ -502,7 +502,7 @@
     let stats = { 1:0, 2:0, 3:0, 4:0, skip:0 };
     let roundsCompleted = 0;
     let remainingWords = [];
-    let currentPair = null;      // { cardA, cardB, commonWord }
+    let currentPair = null;      // { cardA, cardB, commonWord, usedWord? }
     let nextPair = null;         // preloaded next pair
     let answered = false, attemptCount = 0, autoTimer = null, currentOptions = [];
     let isTransitioning = false;  // prevent multiple transitions
@@ -594,10 +594,12 @@
     
     function generateChallengePair() {
         if (remainingWords.length === 0) return null;
+        // 关键修复：基于当前最新的 remainingWords 数组生成新的 pair
         const wordIndex = Math.floor(Math.random() * remainingWords.length);
         const selectedWord = remainingWords[wordIndex];
         const candidates = cards.filter(card => card.words.includes(selectedWord));
         if (candidates.length < 2) {
+            // 理论上不应该发生，但若发生则移除此单词并重试
             remainingWords.splice(wordIndex, 1);
             return generateChallengePair();
         }
@@ -609,41 +611,56 @@
         return { cardA, cardB, commonWord: selectedWord, usedWord: selectedWord };
     }
     
+    // 核心修复：重新生成 nextPair，确保基于最新的 remainingWords
+    function refreshNextPair() {
+        if (currentMode === "random") {
+            nextPair = generateRandomPair();
+            if (nextPair) preloadImages(nextPair.cardA, nextPair.cardB, () => {});
+        } else {
+            if (remainingWords.length > 0) {
+                nextPair = generateChallengePair();
+                if (nextPair) preloadImages(nextPair.cardA, nextPair.cardB, () => {});
+            } else {
+                nextPair = null;
+            }
+        }
+    }
+    
     function consumeCurrentAndPrepareNext() {
-        // 从剩余单词池中移除当前使用的单词（挑战模式）
+        // 1. 从剩余单词池中移除当前使用的单词（挑战模式）
         if (currentMode === "challenge" && currentPair && currentPair.usedWord !== undefined) {
             const idx = remainingWords.indexOf(currentPair.usedWord);
             if (idx !== -1) remainingWords.splice(idx, 1);
         }
-        // 更新进度
+        
+        // 2. 更新进度 (roundsCompleted)
         roundsCompleted++;
         updateProgressUI();
         
-        // 切换到下一组
+        // 3. 切换到下一组 (nextPair 是之前预加载的)
         if (nextPair) {
             currentPair = nextPair;
             displayCardImages(currentPair.cardA, currentPair.cardB);
             currentCommonWord = currentPair.commonWord;
-            // 预生成再下一组
-            prepareNextPair();
         } else {
-            // 如果没有预加载（首次或出错），直接生成
+            // 如果没有预加载（极少数情况），立即生成一个新的
             if (currentMode === "random") {
                 currentPair = generateRandomPair();
             } else {
                 currentPair = generateChallengePair();
                 if (!currentPair) {
-                    // 游戏结束
                     document.getElementById('feedbackMsg').innerHTML = '🏆 Challenge completed! Press Reset to play again. 🏆';
                     return;
                 }
             }
             displayCardImages(currentPair.cardA, currentPair.cardB);
             currentCommonWord = currentPair.commonWord;
-            prepareNextPair();
         }
         
-        // 重置状态
+        // 4. 关键：基于最新的状态（剩余的单词池）重新生成下一组的预加载
+        refreshNextPair();
+        
+        // 5. 重置回合状态
         answered = false;
         attemptCount = 0;
         enableSkipButton(true);
@@ -652,26 +669,6 @@
         document.getElementById('feedbackMsg').innerHTML = '🔍 Pick the word that appears on both cards.';
         document.getElementById('feedbackMsg').style.background = "#e7d6bd";
         isTransitioning = false;
-    }
-    
-    function prepareNextPair() {
-        if (currentMode === "random") {
-            const newPair = generateRandomPair();
-            nextPair = newPair;
-            preloadImages(nextPair.cardA, nextPair.cardB, () => {});
-        } else {
-            if (remainingWords.length > 0) {
-                const newPair = generateChallengePair();
-                if (newPair) {
-                    nextPair = newPair;
-                    preloadImages(nextPair.cardA, nextPair.cardB, () => {});
-                } else {
-                    nextPair = null;
-                }
-            } else {
-                nextPair = null;
-            }
-        }
     }
     
     function loadInitialPair() {
@@ -685,7 +682,8 @@
         currentCommonWord = currentPair.commonWord;
         preloadImages(currentPair.cardA, currentPair.cardB, () => {
             displayCardImages(currentPair.cardA, currentPair.cardB);
-            prepareNextPair();
+            // 初始加载时也预先生成下一组
+            refreshNextPair();
             answered = false;
             attemptCount = 0;
             enableSkipButton(true);
@@ -733,7 +731,9 @@
         disableAllOptions();
         enableSkipButton(false);
         
+        // 挑战模式下的特殊处理：如果这是最后一个单词，不再触发计时器
         if (currentMode === "challenge" && remainingWords.length === 1 && currentPair.usedWord) {
+            // 移除这个最后使用的单词
             const idx = remainingWords.indexOf(currentPair.usedWord);
             if (idx !== -1) remainingWords.splice(idx, 1);
             roundsCompleted = 57 - remainingWords.length;
@@ -766,7 +766,6 @@
         enableSkipButton(false);
         
         if (currentMode === "challenge" && remainingWords.length === 0) {
-            // 已经完成
             return;
         }
         
