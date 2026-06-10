@@ -31,7 +31,6 @@
             transition: all 0.2s;
         }
 
-        /* mode toggle buttons */
         .mode-bar {
             display: flex;
             justify-content: center;
@@ -253,6 +252,12 @@
             transform: translateY(2px);
             box-shadow: 0 2px 0 #9b5e1a;
         }
+        .next-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+            pointer-events: none;
+        }
 
         .footer-stats {
             display: flex;
@@ -383,13 +388,14 @@
         <div class="question-text">🧩 Which word is on BOTH cards?</div>
         <div class="options-grid" id="optionsContainer"></div>
         <div class="feedback" id="feedbackMsg">✨ Click a word to find the match ✨</div>
-        <button class="next-btn" id="nextPairBtn">🎲 New Pair 🎲</button>
+        <button class="next-btn" id="skipBtn">⏭️ Skip</button>
         <div class="footer-stats">
             <div class="stats-panel" id="statsPanel">
                 <span>1st: <span id="stat1" class="stat-value">0</span></span>
                 <span>2nd: <span id="stat2" class="stat-value">0</span></span>
                 <span>3rd: <span id="stat3" class="stat-value">0</span></span>
                 <span>4th: <span id="stat4" class="stat-value">0</span></span>
+                <span>⏭️ Skip: <span id="statSkip" class="stat-value">0</span></span>
             </div>
             <div class="progress-text" id="progressText">
                 Round: <span id="currentRoundNumber" class="progress-count">0</span>
@@ -464,8 +470,8 @@
     // --------------------------------------------------------------
     // 4. GAME STATE
     // --------------------------------------------------------------
-    let currentMode = "random";   // "random" or "challenge"
-    let stats = { 1:0, 2:0, 3:0, 4:0 };
+    let currentMode = "random";
+    let stats = { 1:0, 2:0, 3:0, 4:0, skip:0 };
     let roundsCompleted = 0;
     let remainingWords = [];
     let currentLeftCard = null, currentRightCard = null, currentCommonWord = null;
@@ -488,6 +494,7 @@
         document.getElementById('stat2').innerText = stats[2];
         document.getElementById('stat3').innerText = stats[3];
         document.getElementById('stat4').innerText = stats[4];
+        document.getElementById('statSkip').innerText = stats.skip;
     }
     function updateProgressUI() {
         const progressDiv = document.getElementById('progressText');
@@ -497,10 +504,16 @@
             progressDiv.innerHTML = `Progress: <span class="progress-count">${roundsCompleted}</span> / 57`;
         }
     }
+    function incrementRoundAndSkip() {
+        roundsCompleted++;
+        stats.skip++;
+        updateStatsUI();
+        updateProgressUI();
+    }
     function resetGameState(resetStatsAndProgress = true) {
         clearAutoTimer();
         if (resetStatsAndProgress) {
-            stats = { 1:0, 2:0, 3:0, 4:0 };
+            stats = { 1:0, 2:0, 3:0, 4:0, skip:0 };
             roundsCompleted = 0;
             if (currentMode === "challenge") {
                 remainingWords = [...wordBank];
@@ -511,12 +524,17 @@
         }
         answered = false;
         attemptCount = 0;
+        enableSkipButton(true);
         if (currentMode === "random") loadRandomPairRandom();
         else loadChallengePair();
     }
     function shuffleArray(arr) { for (let i = arr.length - 1; i > 0; i--) { const j = Math.floor(Math.random()*(i+1)); [arr[i], arr[j]] = [arr[j], arr[i]]; } }
     function clearAutoTimer() { if (autoTimer) { clearTimeout(autoTimer); autoTimer = null; } }
     function disableAllOptions() { document.querySelectorAll('.option-btn').forEach(btn => btn.disabled = true); }
+    function enableSkipButton(enabled) { 
+        const skipBtn = document.getElementById('skipBtn');
+        if (skipBtn) skipBtn.disabled = !enabled;
+    }
 
     function findCardsForWord(word) {
         const candidates = cards.filter(card => card.words.includes(word));
@@ -537,6 +555,7 @@
         currentRightCard = cards[idxB];
         currentCommonWord = findCommonWord(currentLeftCard, currentRightCard);
         answered = false; attemptCount = 0;
+        enableSkipButton(true);
         updateCardImages();
         currentOptions = generateOptions(currentCommonWord);
         renderOptions(currentOptions);
@@ -550,7 +569,9 @@
         if (remainingWords.length === 0) {
             document.getElementById('feedbackMsg').innerHTML = '🏆 Amazing! You completed all 57 words! 🏆 Press Reset to play again.';
             document.getElementById('feedbackMsg').style.background = "#f0d89e";
-            answered = true; disableAllOptions();
+            answered = true; 
+            disableAllOptions();
+            enableSkipButton(false);
             return;
         }
         const wordIndex = Math.floor(Math.random() * remainingWords.length);
@@ -565,6 +586,7 @@
         currentRightCard = cardPair[1];
         currentCommonWord = selectedWord;
         answered = false; attemptCount = 0;
+        enableSkipButton(true);
         updateCardImages();
         currentOptions = generateOptions(currentCommonWord);
         renderOptions(currentOptions);
@@ -608,6 +630,33 @@
             updateProgressUI();
         }
     }
+    function handleSkip() {
+        if (answered) return;
+        clearAutoTimer();
+        if (currentMode === "challenge") {
+            const idx = remainingWords.indexOf(currentCommonWord);
+            if (idx !== -1) remainingWords.splice(idx,1);
+        }
+        roundsCompleted++;
+        stats.skip++;
+        updateStatsUI();
+        updateProgressUI();
+        answered = true;
+        disableAllOptions();
+        enableSkipButton(false);
+        const feedbackDiv = document.getElementById('feedbackMsg');
+        feedbackDiv.innerHTML = `⏭️ Skipped! The common word was "${currentCommonWord}".`;
+        feedbackDiv.style.background = "#f5ddbc";
+        if (currentMode === "challenge" && remainingWords.length === 0) {
+            feedbackDiv.innerHTML = '🏆 Challenge completed! Press Reset to play again. 🏆';
+            return;
+        }
+        autoTimer = setTimeout(() => {
+            if (currentMode === "random") loadRandomPairRandom();
+            else loadChallengePair();
+            autoTimer = null;
+        }, 1500);
+    }
     function renderOptions(options) {
         const container = document.getElementById('optionsContainer');
         container.innerHTML = '';
@@ -619,7 +668,7 @@
             btn.addEventListener('click', (e) => {
                 e.stopPropagation();
                 if (answered) {
-                    document.getElementById('feedbackMsg').innerHTML = '⏳ Round finished. Click "New Pair" to continue.';
+                    document.getElementById('feedbackMsg').innerHTML = '⏳ Round finished. Click "Skip" to continue.';
                     return;
                 }
                 if (btn.disabled) return;
@@ -641,6 +690,7 @@
                     recordCorrectAttempt();
                     answered = true;
                     disableAllOptions();
+                    enableSkipButton(false);
                     if (currentMode === "challenge" && remainingWords.length === 0) {
                         feedbackDiv.innerHTML = '🏆 Challenge completed! Press Reset to play again. 🏆';
                         return;
@@ -661,7 +711,6 @@
         });
     }
 
-    // Mode switching with description in confirm dialog
     function switchMode(newMode) {
         if (currentMode === newMode) return;
         
@@ -669,14 +718,14 @@
         if (newMode === "random") {
             message = "Switch to Random Mode?\n\nStats and progress will reset.\n\n[Random Mode]\nCards are completely random. Same word may appear many times. No fixed ending. Play as long as you like.";
         } else {
-            message = "Switch to Challenge Mode?\n\nStats and progress will reset.\n\n[Challenge Mode]\nEach of the 57 words appears exactly once as the correct answer. Complete all 57 rounds to win. Words are randomized.";
+            message = "Switch to Challenge Mode?\n\nStats and progress will reset.\n\n[Challenge Mode]\nEach of the 57 words appears exactly once. Complete all 57 rounds to win. Words are randomized.";
         }
         
         const confirmed = confirm(message);
         if (!confirmed) return;
         
         currentMode = newMode;
-        stats = { 1:0, 2:0, 3:0, 4:0 };
+        stats = { 1:0, 2:0, 3:0, 4:0, skip:0 };
         roundsCompleted = 0;
         if (currentMode === "challenge") {
             remainingWords = [...wordBank];
@@ -693,13 +742,14 @@
     }
 
     function resetGame() {
+        clearAutoTimer();
         if (currentMode === "random") {
-            stats = { 1:0, 2:0, 3:0, 4:0 };
+            stats = { 1:0, 2:0, 3:0, 4:0, skip:0 };
             roundsCompleted = 0;
             updateStatsUI(); updateProgressUI();
             loadRandomPairRandom();
         } else {
-            stats = { 1:0, 2:0, 3:0, 4:0 };
+            stats = { 1:0, 2:0, 3:0, 4:0, skip:0 };
             roundsCompleted = 0;
             remainingWords = [...wordBank];
             shuffleArray(remainingWords);
@@ -708,10 +758,10 @@
         }
     }
 
-    function nextPair() {
+    function skipAction() {
+        if (answered) return;
         clearAutoTimer();
-        if (currentMode === "random") loadRandomPairRandom();
-        else loadChallengePair();
+        handleSkip();
     }
 
     function init() {
@@ -720,7 +770,7 @@
         loadRandomPairRandom();
         document.getElementById('randomModeBtn').addEventListener('click', () => switchMode("random"));
         document.getElementById('challengeModeBtn').addEventListener('click', () => switchMode("challenge"));
-        document.getElementById('nextPairBtn').addEventListener('click', () => { clearAutoTimer(); nextPair(); });
+        document.getElementById('skipBtn').addEventListener('click', () => { skipAction(); });
         document.getElementById('reshuffleBtn').addEventListener('click', () => { clearAutoTimer(); resetGame(); });
     }
     init();
