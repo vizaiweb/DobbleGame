@@ -840,33 +840,41 @@
     }
 
     function switchMode(newMode) {
-        if (currentMode === newMode || isTransitioning) return;
-        const msg = `Switch to ${newMode==="random"?"Random Mode":"Challenge Mode"}? Stats and progress will reset.`;
-        if (!confirm(msg)) return;
-        clearAutoTimer();
-        currentMode = newMode;
-        stats = { 1:0, 2:0, 3:0, 4:0, skip:0 };
-        roundsCompleted = 0;
-        if (currentMode === "challenge") remainingWords = [...currentWordBank];
-        else remainingWords = [];
-        updateStatsUI(); updateProgressUI();
-        answered = false; attemptCount = 0; isTransitioning = false; nextPair = null;
-        showLoadingImages();
-        if (currentMode === "random") currentPair = generateRandomPair();
-        else { currentPair = generateChallengePair(); if (!currentPair) return; }
-        currentCommonWord = currentPair.commonWord;
-        preloadImages(currentPair.cardA, currentPair.cardB, () => {
-            displayCardImages(currentPair.cardA, currentPair.cardB);
-            refreshNextPair();
-            enableSkipButton(true);
-            currentOptions = generateOptions(currentCommonWord);
-            renderOptions(currentOptions);
-            feedbackMsg.innerHTML = '🔍 Pick the word that appears on both cards.';
-            feedbackMsg.style.background = "#e7d6bd";
-        });
-        randomBtn.classList.toggle('active', currentMode === "random");
-        challengeBtn.classList.toggle('active', currentMode === "challenge");
+    if (currentMode === newMode || isTransitioning) return;
+    
+    let msg = "";
+    if (newMode === "random") {
+        msg = "Switch to Random Mode?\n\nStats and progress will reset.\n\n[Random Mode]\n- Cards are completely random\n- Same word may appear many times\n- No fixed ending, play as long as you like\n- Progress shows total rounds played";
+    } else {
+        msg = "Switch to Challenge Mode?\n\nStats and progress will reset.\n\n[Challenge Mode]\n- Each of the 57 words appears exactly once\n- Complete all 57 rounds to win\n- Words are randomized each session\n- Progress shows remaining words (x/57)";
     }
+    
+    if (!confirm(msg)) return;
+    
+    clearAutoTimer();
+    currentMode = newMode;
+    stats = { 1:0, 2:0, 3:0, 4:0, skip:0 };
+    roundsCompleted = 0;
+    if (currentMode === "challenge") remainingWords = [...currentWordBank];
+    else remainingWords = [];
+    updateStatsUI(); updateProgressUI();
+    answered = false; attemptCount = 0; isTransitioning = false; nextPair = null;
+    showLoadingImages();
+    if (currentMode === "random") currentPair = generateRandomPair();
+    else { currentPair = generateChallengePair(); if (!currentPair) return; }
+    currentCommonWord = currentPair.commonWord;
+    preloadImages(currentPair.cardA, currentPair.cardB, () => {
+        displayCardImages(currentPair.cardA, currentPair.cardB);
+        refreshNextPair();
+        enableSkipButton(true);
+        currentOptions = generateOptions(currentCommonWord);
+        renderOptions(currentOptions);
+        feedbackMsg.innerHTML = '🔍 Pick the word that appears on both cards.';
+        feedbackMsg.style.background = "#e7d6bd";
+    });
+    randomBtn.classList.toggle('active', currentMode === "random");
+    challengeBtn.classList.toggle('active', currentMode === "challenge");
+}
 
     function resetGame() {
         clearAutoTimer(); isTransitioning = false;
