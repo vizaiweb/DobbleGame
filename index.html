@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes, viewport-fit=cover">
-    <title>Unique Match · Dobble Game | Random & Challenge Modes</title>
+    <title>Unique Match · Dobble Game | Multiple Themes</title>
     <style>
         * {
             box-sizing: border-box;
@@ -35,216 +35,48 @@
             z-index: 1;
         }
 
-        /* 左侧触发按钮 (浮动) */
-        .ref-trigger {
-            position: fixed;
-            left: 12px;
-            top: 50%;
-            transform: translateY(-50%);
-            width: 48px;
-            height: 48px;
-            background: rgba(224, 157, 50, 0.9);
-            backdrop-filter: blur(4px);
-            border-radius: 60px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 26px;
-            font-weight: bold;
-            color: white;
-            cursor: pointer;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-            transition: 0.2s;
-            z-index: 15;
-            border: 1px solid rgba(255,255,200,0.6);
-        }
-        .ref-trigger:hover {
-            background: #c28234;
-            transform: translateY(-50%) scale(1.02);
-        }
-        .ref-trigger:active {
-            transform: translateY(-50%) scale(0.96);
-        }
-
-        /* 侧边栏遮罩 */
-        .sidebar-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.6);
-            backdrop-filter: blur(3px);
-            z-index: 20;
-            visibility: hidden;
-            opacity: 0;
-            transition: visibility 0.2s, opacity 0.2s;
-        }
-        .sidebar-overlay.active {
-            visibility: visible;
-            opacity: 1;
-        }
-
-        /* 侧边栏面板 */
-        .ref-sidebar {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 85%;
-            max-width: 360px;
-            height: 100%;
-            background: #fffdf7;
-            box-shadow: 8px 0 28px rgba(0, 0, 0, 0.3);
-            z-index: 21;
-            transform: translateX(-100%);
-            transition: transform 0.25s ease-out;
-            display: flex;
-            flex-direction: column;
-            border-radius: 0 2rem 2rem 0;
-            overflow: hidden;
-        }
-        .ref-sidebar.open {
-            transform: translateX(0);
-        }
-
-        /* 侧边栏头部 */
-        .sidebar-header {
+        /* 主题选择栏 - 在mode-bar同一行右侧增加 */
+        .top-bar {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 18px 18px 12px;
-            background: #e09d32;
-            color: white;
-            border-bottom: 2px solid #c28234;
-        }
-        .sidebar-header h3 {
-            margin: 0;
-            font-size: 1.2rem;
-            font-weight: bold;
-            letter-spacing: 1px;
-        }
-        .close-sidebar {
-            background: rgba(0,0,0,0.2);
-            border: none;
-            font-size: 24px;
-            cursor: pointer;
-            color: white;
-            width: 36px;
-            height: 36px;
-            border-radius: 40px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: 0.1s;
-        }
-        .close-sidebar:active {
-            background: rgba(0,0,0,0.4);
-            transform: scale(0.94);
-        }
-
-        /* 图片列表区域 */
-        .cards-list {
-            flex: 1;
-            overflow-y: auto;
-            padding: 20px 16px;
-            display: flex;
-            flex-direction: column;
-            gap: 24px;
-            background: #fef5e8;
-        }
-        .ref-card {
-            background: #f9efdf;
-            border-radius: 1.5rem;
-            padding: 12px;
-            box-shadow: 0 6px 12px rgba(0,0,0,0.08);
-            transition: 0.1s;
-            cursor: pointer;
-            text-align: center;
-        }
-        .ref-card img {
-            width: 100%;
-            max-width: 100%;
-            height: auto;
-            border-radius: 1rem;
-            background: #f0e2cf;
-            display: block;
-            box-shadow: 0 2px 6px rgba(0,0,0,0.1);
-            transition: 0.1s;
-        }
-        .ref-card:active {
-            transform: scale(0.98);
-        }
-        .card-label-small {
-            margin-top: 8px;
-            font-size: 0.7rem;
-            font-weight: 600;
-            color: #b45f1b;
-            background: #ffe1b3;
-            display: inline-block;
-            padding: 2px 12px;
-            border-radius: 40px;
-        }
-        .ref-note {
-            padding: 12px 16px 18px;
-            text-align: center;
-            font-size: 0.7rem;
-            color: #8b6946;
-            background: #f3e9db;
-            border-top: 1px solid #e2d0b6;
-            font-weight: 500;
-        }
-
-        /* 放大图片 Modal */
-        .image-modal {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.9);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            z-index: 30;
-            visibility: hidden;
-            opacity: 0;
-            transition: 0.2s;
-            cursor: pointer;
-        }
-        .image-modal.active {
-            visibility: visible;
-            opacity: 1;
-        }
-        .image-modal img {
-            max-width: 90%;
-            max-height: 85%;
-            object-fit: contain;
-            border-radius: 24px;
-            box-shadow: 0 12px 30px rgba(0,0,0,0.5);
-        }
-        .close-modal-hint {
-            position: absolute;
-            bottom: 20px;
-            left: 0;
-            right: 0;
-            text-align: center;
-            color: #ddd;
-            font-size: 0.8rem;
-            background: rgba(0,0,0,0.5);
-            width: fit-content;
-            margin: 0 auto;
-            padding: 4px 16px;
-            border-radius: 60px;
-            pointer-events: none;
-        }
-
-        /* 原有样式保留 */
-        .mode-bar {
-            display: flex;
-            justify-content: center;
-            gap: 1.5rem;
+            flex-wrap: wrap;
+            gap: 1rem;
             margin-bottom: 1.2rem;
         }
+        .mode-bar {
+            display: flex;
+            gap: 1.5rem;
+        }
+        .theme-selector {
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+            background: #efe3cf;
+            padding: 0.2rem 0.8rem 0.2rem 1rem;
+            border-radius: 60px;
+            font-weight: bold;
+        }
+        .theme-selector label {
+            color: #4b6b3e;
+            font-size: 0.85rem;
+        }
+        #themeSelect {
+            background: #fffef7;
+            border: 1px solid #c2a56d;
+            border-radius: 40px;
+            padding: 0.4rem 0.8rem;
+            font-size: 0.85rem;
+            font-weight: bold;
+            color: #3a5c2e;
+            cursor: pointer;
+            outline: none;
+            font-family: inherit;
+        }
+        #themeSelect:focus {
+            border-color: #e09d32;
+        }
+
         .mode-btn {
             background: #d9c7a7;
             border: none;
@@ -478,50 +310,182 @@
             50% { background-color: #cbe6b0; box-shadow: 0 0 0 8px #ffcf7a; }
             100% { background-color: #fffaf0; box-shadow: 0 0 0 0 #ffd58c; }
         }
+
+        /* 左侧触发按钮 */
+        .ref-trigger {
+            position: fixed;
+            left: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 48px;
+            height: 48px;
+            background: rgba(224, 157, 50, 0.9);
+            backdrop-filter: blur(4px);
+            border-radius: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 26px;
+            font-weight: bold;
+            color: white;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+            z-index: 15;
+            border: 1px solid rgba(255,255,200,0.6);
+        }
+        .ref-trigger:active { transform: translateY(-50%) scale(0.96); }
+
+        /* 侧边栏 */
+        .sidebar-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(3px);
+            z-index: 20;
+            visibility: hidden;
+            opacity: 0;
+            transition: visibility 0.2s, opacity 0.2s;
+        }
+        .sidebar-overlay.active { visibility: visible; opacity: 1; }
+        .ref-sidebar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 85%;
+            max-width: 360px;
+            height: 100%;
+            background: #fffdf7;
+            box-shadow: 8px 0 28px rgba(0, 0, 0, 0.3);
+            z-index: 21;
+            transform: translateX(-100%);
+            transition: transform 0.25s ease-out;
+            display: flex;
+            flex-direction: column;
+            border-radius: 0 2rem 2rem 0;
+            overflow: hidden;
+        }
+        .ref-sidebar.open { transform: translateX(0); }
+        .sidebar-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 18px 18px 12px;
+            background: #e09d32;
+            color: white;
+        }
+        .sidebar-header h3 { margin: 0; font-size: 1.2rem; }
+        .close-sidebar {
+            background: rgba(0,0,0,0.2);
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            color: white;
+            width: 36px;
+            height: 36px;
+            border-radius: 40px;
+        }
+        .cards-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+            background: #fef5e8;
+        }
+        .ref-card {
+            background: #f9efdf;
+            border-radius: 1.5rem;
+            padding: 12px;
+            cursor: pointer;
+            text-align: center;
+        }
+        .ref-card img { width: 100%; border-radius: 1rem; background: #f0e2cf; }
+        .ref-card:active { transform: scale(0.98); }
+        .card-label-small {
+            margin-top: 8px;
+            font-size: 0.7rem;
+            font-weight: 600;
+            color: #b45f1b;
+            background: #ffe1b3;
+            display: inline-block;
+            padding: 2px 12px;
+            border-radius: 40px;
+        }
+        .ref-note {
+            padding: 12px 16px 18px;
+            text-align: center;
+            font-size: 0.7rem;
+            color: #8b6946;
+            background: #f3e9db;
+        }
+        .image-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.9);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 30;
+            visibility: hidden;
+            opacity: 0;
+            cursor: pointer;
+        }
+        .image-modal.active { visibility: visible; opacity: 1; }
+        .image-modal img { max-width: 90%; max-height: 85%; object-fit: contain; border-radius: 24px; }
+        .close-modal-hint {
+            position: absolute;
+            bottom: 20px;
+            color: #ddd;
+            font-size: 0.8rem;
+            background: rgba(0,0,0,0.5);
+            padding: 4px 16px;
+            border-radius: 60px;
+        }
+
         @media (max-width: 700px) {
             .game-container { padding: 1rem; }
             .ref-trigger { width: 42px; height: 42px; font-size: 22px; left: 8px; }
             .option-btn { font-size: 0.85rem; padding: 0.6rem; }
-            .cards-row { gap: 1rem; }
-            .stats-panel { gap: 0.6rem; font-size: 0.7rem; }
-        }
-        @media (min-width: 1400px) {
-            .ref-sidebar { max-width: 380px; }
+            .top-bar { flex-direction: column; align-items: stretch; }
+            .mode-bar { justify-content: center; }
+            .theme-selector { justify-content: center; }
         }
     </style>
 </head>
 <body>
 
 <div class="ref-trigger" id="refTriggerBtn">📖</div>
-
-<!-- 侧边栏遮罩 -->
 <div class="sidebar-overlay" id="sidebarOverlay"></div>
-
-<!-- 侧边栏面板 -->
 <div class="ref-sidebar" id="refSidebar">
     <div class="sidebar-header">
         <h3>📚 Answer Cards Reference</h3>
         <button class="close-sidebar" id="closeSidebarBtn">✕</button>
     </div>
-    <div class="cards-list" id="cardsList">
-        <!-- 动态生成4张卡片图片 -->
-    </div>
-    <div class="ref-note">
-        📌 Tap any image to enlarge
-    </div>
+    <div class="cards-list" id="cardsList"></div>
+    <div class="ref-note">📌 Tap any image to enlarge</div>
 </div>
-
-<!-- 放大图片模态框 -->
 <div class="image-modal" id="imageModal">
     <img id="modalImage" src="" alt="enlarged">
     <div class="close-modal-hint">Tap anywhere to close</div>
 </div>
 
-<!-- 主游戏容器 -->
 <div class="game-container">
-    <div class="mode-bar">
-        <button id="randomModeBtn" class="mode-btn active">🎲 Random Mode</button>
-        <button id="challengeModeBtn" class="mode-btn">🏆 Challenge Mode</button>
+    <div class="top-bar">
+        <div class="mode-bar">
+            <button id="randomModeBtn" class="mode-btn active">🎲 Random Mode</button>
+            <button id="challengeModeBtn" class="mode-btn">🏆 Challenge Mode</button>
+        </div>
+        <div class="theme-selector">
+            <label>🎯 Theme:</label>
+            <select id="themeSelect"></select>
+        </div>
     </div>
     <h1>🔷 Unique Match · Pair Challenge 🔶</h1>
     <div style="text-align:center;"><span class="sub">Each pair shares ONE word</span></div>
@@ -560,131 +524,383 @@
 
 <script>
     // --------------------------------------------------------------
-    // 1. WORD BANK (57 words)
-    // --------------------------------------------------------------
-    const wordBank = [
-        "eagle", "chick", "nest", "opossum", "honeybee", "crab", "squirrel", "mouse",
-        "frog", "giraffe", "elephant", "koala", "parrot", "sloth", "cheetah", "tree hollow",
-        "hive", "wood", "field", "pond", "jungle", "land", "grassland", "mountain",
-        "orangutan", "forest", "rainforest", "reserve", "teach", "take care of", "miss", "take a nap",
-        "put out", "day", "night", "morning", "midday", "afternoon", "evening", "animals",
-        "make", "homes", "places", "fox", "next to", "some", "live in", "have",
-        "people", "help", "bees", "food", "winter", "polar bears", "cold place", "all",
-        "many"
-    ];
+    // 全局状态
+    let currentMode = "random";          // "random" or "challenge"
+    let stats = { 1:0, 2:0, 3:0, 4:0, skip:0 };
+    let roundsCompleted = 0;
+    let remainingWords = [];
+    let currentPair = null;
+    let nextPair = null;
+    let answered = false, attemptCount = 0, autoTimer = null, currentOptions = [];
+    let isTransitioning = false;
+    let currentCommonWord = null;
+    let currentThemeId = null;
 
-    // 卡片数据 (57 lines)
-    const cardsDataRaw = [
-        [0,1,2,3,4,5,6,7], [0,8,9,10,11,12,13,14], [0,15,16,17,18,19,20,21],
-        [0,22,23,24,25,26,27,28], [0,29,30,31,32,33,34,35], [0,36,37,38,39,40,41,42],
-        [0,43,44,45,46,47,48,49], [0,50,51,52,53,54,55,56],
-        [1,8,15,22,29,36,43,50], [1,9,16,23,30,37,44,51], [1,10,17,24,31,38,45,52],
-        [1,11,18,25,32,39,46,53], [1,12,19,26,33,40,47,54], [1,13,20,27,34,41,48,55],
-        [1,14,21,28,35,42,49,56],
-        [2,8,16,24,32,40,48,56], [2,9,17,25,33,41,49,50], [2,10,18,26,34,42,43,51],
-        [2,11,19,27,35,36,44,52], [2,12,20,28,29,37,45,53], [2,13,21,22,30,38,46,54],
-        [2,14,15,23,31,39,47,55],
-        [3,8,17,26,35,37,46,55], [3,9,18,27,29,38,47,56], [3,10,19,28,30,39,48,50],
-        [3,11,20,21,31,40,49,51], [3,12,21,22,23,41,42,52], [3,13,15,24,33,42,44,53],
-        [3,14,16,25,34,36,45,54],
-        [4,8,18,28,31,41,44,54], [4,9,19,22,32,42,45,55], [4,10,20,23,33,36,46,56],
-        [4,11,21,24,34,37,47,50], [4,12,15,25,35,38,48,51], [4,13,16,26,29,39,49,52],
-        [4,14,17,27,30,40,43,53],
-        [5,8,19,23,34,38,49,53], [5,9,20,24,35,39,43,54], [5,10,21,25,29,40,44,55],
-        [5,11,22,26,30,41,45,56], [5,12,16,27,31,42,46,50], [5,13,17,28,32,43,47,51],
-        [5,14,18,22,33,37,48,52],
-        [6,8,20,25,30,42,47,52], [6,9,21,26,31,36,48,53], [6,10,15,27,32,37,49,54],
-        [6,11,16,28,33,38,43,55], [6,12,17,22,34,39,44,56], [6,13,18,23,35,40,45,50],
-        [6,14,19,24,29,41,46,51],
-        [7,8,21,27,33,39,45,51], [7,9,15,28,34,40,46,52], [7,10,16,22,35,41,47,53],
-        [7,11,17,23,29,42,48,54], [7,12,18,24,30,36,49,55], [7,13,19,25,31,37,43,56],
-        [7,14,20,26,32,38,44,50]
-    ];
-    const cards = cardsDataRaw.map((indices, cid) => ({ id: cid, words: indices.map(idx => wordBank[idx]) }));
+    // 动态数据
+    let currentWordBank = [];
+    let currentCards = [];
+    let currentImageBaseUrl = "";
+    let currentAnswerCards = [];
+    let totalCardsCount = 57;
 
-    const baseUrl = '/DobbleGame/images/';
-    function getCardImageUrl(cardId) { return `${baseUrl}${cardId+1}.png`; }
-    function getFallbackImageUrl(cardId) { return `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200' viewBox='0 0 200 200'%3E%3Crect width='200' height='200' fill='%23e8d5b5'/%3E%3Ctext x='100' y='110' font-size='28' text-anchor='middle' fill='%2380552e' font-weight='bold'%3E${cardId+1}%3C/text%3E%3C/svg%3E`; }
-
-    // 侧边栏 & 图片放大逻辑
+    // DOM 元素
+    const randomBtn = document.getElementById('randomModeBtn');
+    const challengeBtn = document.getElementById('challengeModeBtn');
+    const skipBtn = document.getElementById('skipBtn');
+    const reshuffleBtn = document.getElementById('reshuffleBtn');
+    const themeSelect = document.getElementById('themeSelect');
+    const leftImageBox = document.getElementById('leftImageBox');
+    const rightImageBox = document.getElementById('rightImageBox');
+    const leftWordHint = document.getElementById('leftWordHint');
+    const rightWordHint = document.getElementById('rightWordHint');
+    const optionsContainer = document.getElementById('optionsContainer');
+    const feedbackMsg = document.getElementById('feedbackMsg');
+    const progressText = document.getElementById('progressText');
+    const cardsListDiv = document.getElementById('cardsList');
+    const imageModal = document.getElementById('imageModal');
+    const modalImage = document.getElementById('modalImage');
     const refTrigger = document.getElementById('refTriggerBtn');
     const sidebarOverlay = document.getElementById('sidebarOverlay');
     const refSidebar = document.getElementById('refSidebar');
     const closeSidebarBtn = document.getElementById('closeSidebarBtn');
-    const imageModal = document.getElementById('imageModal');
-    const modalImage = document.getElementById('modalImage');
 
-    function openSidebar() { sidebarOverlay.classList.add('active'); refSidebar.classList.add('open'); }
-    function closeSidebar() { sidebarOverlay.classList.remove('active'); refSidebar.classList.remove('open'); }
-    refTrigger.addEventListener('click', openSidebar);
-    closeSidebarBtn.addEventListener('click', closeSidebar);
-    sidebarOverlay.addEventListener('click', closeSidebar);
-    imageModal.addEventListener('click', () => { imageModal.classList.remove('active'); });
-
-    // 动态生成4张答案卡图片 (c1.png ~ c4.png)
-    const cardsListDiv = document.getElementById('cardsList');
-    for (let i = 1; i <= 4; i++) {
-        const cardDiv = document.createElement('div');
-        cardDiv.className = 'ref-card';
-        const img = document.createElement('img');
-        img.src = `${baseUrl}c${i}.png`;
-        img.alt = `Answer card ${i}`;
-        img.loading = 'lazy';
-        img.onerror = () => { img.src = `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200' viewBox='0 0 200 200'%3E%3Crect width='200' height='200' fill='%23e8d5b5'/%3E%3Ctext x='100' y='110' font-size='16' text-anchor='middle' fill='%2380552e'%3ECard ${i}%3C/text%3E%3C/svg%3E`; };
-        img.addEventListener('click', (e) => { e.stopPropagation(); modalImage.src = img.src; imageModal.classList.add('active'); });
-        cardDiv.appendChild(img);
-        const labelSpan = document.createElement('div'); labelSpan.className = 'card-label-small'; labelSpan.innerText = `Card ${i}`;
-        cardDiv.appendChild(labelSpan);
-        cardsListDiv.appendChild(cardDiv);
-    }
-
-    // ---------- 游戏逻辑 (完整保留挑战/随机模式 + 预加载 + 修复单词重复) ----------
-    let currentMode = "random";
-    let stats = { 1:0, 2:0, 3:0, 4:0, skip:0 };
-    let roundsCompleted = 0;
-    let remainingWords = [];
-    let currentPair = null;      // { cardA, cardB, commonWord, usedWord? }
-    let nextPair = null;
-    let answered = false, attemptCount = 0, autoTimer = null, currentOptions = [];
-    let isTransitioning = false;
+    // 音频 (路径固定)
     const rightAudio = new Audio('sounds/right.mp3');
     const wrongAudio = new Audio('sounds/wrong.mp3');
-    function speakWord(word) { if(window.speechSynthesis){ window.speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(word); u.lang='en-US'; u.rate=0.9; window.speechSynthesis.speak(u); } }
-    function updateStatsUI() { document.getElementById('stat1').innerText=stats[1]; document.getElementById('stat2').innerText=stats[2]; document.getElementById('stat3').innerText=stats[3]; document.getElementById('stat4').innerText=stats[4]; document.getElementById('statSkip').innerText=stats.skip; }
-    function updateProgressUI() { const div=document.getElementById('progressText'); if(currentMode==="random") div.innerHTML=`Round: <span class="progress-count">${roundsCompleted}</span>`; else div.innerHTML=`Progress: <span class="progress-count">${roundsCompleted}</span> / 57`; }
-    function showLoadingImages() { document.getElementById('leftImageBox').innerHTML=`<div class="loading-placeholder"><div class="loading-spinner"></div><div class="loading-text">Loading...</div></div>`; document.getElementById('rightImageBox').innerHTML=`<div class="loading-placeholder"><div class="loading-spinner"></div><div class="loading-text">Loading...</div></div>`; }
-    function displayCardImages(cardA,cardB){ 
-        const leftBox=document.getElementById('leftImageBox'), rightBox=document.getElementById('rightImageBox');
-        leftBox.innerHTML=''; rightBox.innerHTML='';
-        const leftImg=document.createElement('img'), rightImg=document.createElement('img');
-        leftImg.id='leftImg'; rightImg.id='rightImg';
-        leftBox.appendChild(leftImg); rightBox.appendChild(rightImg);
-        leftImg.onerror=()=>{ leftImg.src=getFallbackImageUrl(cardA.id); };
-        rightImg.onerror=()=>{ rightImg.src=getFallbackImageUrl(cardB.id); };
-        leftImg.src=getCardImageUrl(cardA.id); rightImg.src=getCardImageUrl(cardB.id);
-        document.getElementById('leftWordHint').innerHTML=`📖 ${cardA.words.length} icons`;
-        document.getElementById('rightWordHint').innerHTML=`📖 ${cardB.words.length} icons`;
+
+    // 辅助函数
+    function speakWord(word) {
+        if (window.speechSynthesis) {
+            window.speechSynthesis.cancel();
+            const u = new SpeechSynthesisUtterance(word);
+            u.lang = 'en-US'; u.rate = 0.9;
+            window.speechSynthesis.speak(u);
+        }
     }
-    function preloadImages(cardA,cardB,onComplete){ let c=0; const chk=()=>{ c++; if(c===2 && onComplete) onComplete(); }; const i1=new Image(); i1.onload=chk; i1.onerror=chk; i1.src=getCardImageUrl(cardA.id); const i2=new Image(); i2.onload=chk; i2.onerror=chk; i2.src=getCardImageUrl(cardB.id); }
-    function findCommonWord(cardA,cardB){ const set=new Set(cardA.words); for(let w of cardB.words) if(set.has(w)) return w; return null; }
-    function generateOptions(correct){ let opts=new Set([correct]); let candidates=wordBank.filter(w=>w!==correct); for(let i=candidates.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[candidates[i],candidates[j]]=[candidates[j],candidates[i]];} while(opts.size<4 && candidates.length) opts.add(candidates.pop()); return Array.from(opts).sort(()=>Math.random()-0.5); }
-    function generateRandomPair(){ let a=Math.floor(Math.random()*cards.length),b=Math.floor(Math.random()*cards.length); while(a===b) b=Math.floor(Math.random()*cards.length); return { cardA:cards[a], cardB:cards[b], commonWord:findCommonWord(cards[a],cards[b]) }; }
-    function generateChallengePair(){ if(remainingWords.length===0) return null; const idx=Math.floor(Math.random()*remainingWords.length); const word=remainingWords[idx]; const candidates=cards.filter(c=>c.words.includes(word)); if(candidates.length<2){ remainingWords.splice(idx,1); return generateChallengePair(); } let a=Math.floor(Math.random()*candidates.length),b=Math.floor(Math.random()*candidates.length); while(a===b && candidates.length>1) b=Math.floor(Math.random()*candidates.length); return { cardA:candidates[a], cardB:candidates[b], commonWord:word, usedWord:word }; }
-    function refreshNextPair(){ if(currentMode==="random"){ nextPair=generateRandomPair(); if(nextPair) preloadImages(nextPair.cardA,nextPair.cardB,()=>{}); } else { if(remainingWords.length>0){ nextPair=generateChallengePair(); if(nextPair) preloadImages(nextPair.cardA,nextPair.cardB,()=>{}); } else nextPair=null; } }
-    function consumeCurrentAndPrepareNext(){ if(currentMode==="challenge" && currentPair?.usedWord){ const idx=remainingWords.indexOf(currentPair.usedWord); if(idx!==-1) remainingWords.splice(idx,1); } roundsCompleted++; updateProgressUI(); if(nextPair){ currentPair=nextPair; displayCardImages(currentPair.cardA,currentPair.cardB); currentCommonWord=currentPair.commonWord; } else { if(currentMode==="random") currentPair=generateRandomPair(); else { currentPair=generateChallengePair(); if(!currentPair){ document.getElementById('feedbackMsg').innerHTML='🏆 Challenge completed! Press Reset to play again. 🏆'; return; } } displayCardImages(currentPair.cardA,currentPair.cardB); currentCommonWord=currentPair.commonWord; } refreshNextPair(); answered=false; attemptCount=0; enableSkipButton(true); currentOptions=generateOptions(currentCommonWord); renderOptions(currentOptions); document.getElementById('feedbackMsg').innerHTML='🔍 Pick the word that appears on both cards.'; document.getElementById('feedbackMsg').style.background="#e7d6bd"; isTransitioning=false; }
-    let currentCommonWord=null;
-    function loadInitialPair(){ showLoadingImages(); if(currentMode==="random") currentPair=generateRandomPair(); else { currentPair=generateChallengePair(); if(!currentPair) return; } currentCommonWord=currentPair.commonWord; preloadImages(currentPair.cardA,currentPair.cardB,()=>{ displayCardImages(currentPair.cardA,currentPair.cardB); refreshNextPair(); answered=false; attemptCount=0; enableSkipButton(true); currentOptions=generateOptions(currentCommonWord); renderOptions(currentOptions); document.getElementById('feedbackMsg').innerHTML='🔍 Pick the word that appears on both cards.'; document.getElementById('feedbackMsg').style.background="#e7d6bd"; }); }
-    function recordCorrectAttempt(){ let used=Math.min(attemptCount,4); stats[used]++; updateStatsUI(); }
-    function handleCorrect(){ rightAudio.play().catch(e=>console.log); document.getElementById('feedbackMsg').innerHTML=`✅ Perfect! Common word is "${currentCommonWord}"! 🎉`; document.getElementById('feedbackMsg').style.background="#cae3b5"; document.getElementById('cardLeft').classList.add('card-glow'); document.getElementById('cardRight').classList.add('card-glow'); setTimeout(()=>{ document.getElementById('cardLeft').classList.remove('card-glow'); document.getElementById('cardRight').classList.remove('card-glow'); },700); recordCorrectAttempt(); answered=true; disableAllOptions(); enableSkipButton(false); if(currentMode==="challenge" && remainingWords.length===1 && currentPair?.usedWord){ const idx=remainingWords.indexOf(currentPair.usedWord); if(idx!==-1) remainingWords.splice(idx,1); roundsCompleted=57-remainingWords.length; updateProgressUI(); if(remainingWords.length===0){ document.getElementById('feedbackMsg').innerHTML='🏆 Challenge completed! Press Reset to play again. 🏆'; return; } } clearAutoTimer(); autoTimer=setTimeout(()=>{ if(isTransitioning) return; isTransitioning=true; consumeCurrentAndPrepareNext(); autoTimer=null; },2000); }
-    function handleSkip(){ if(answered||isTransitioning) return; clearAutoTimer(); stats.skip++; updateStatsUI(); document.getElementById('feedbackMsg').innerHTML=`⏭️ Skipped! The common word was "${currentCommonWord}".`; document.getElementById('feedbackMsg').style.background="#f5ddbc"; answered=true; disableAllOptions(); enableSkipButton(false); if(currentMode==="challenge" && remainingWords.length===0) return; isTransitioning=true; consumeCurrentAndPrepareNext(); }
-    function disableAllOptions(){ document.querySelectorAll('.option-btn').forEach(btn=>btn.disabled=true); }
-    function enableSkipButton(en){ const btn=document.getElementById('skipBtn'); if(btn) btn.disabled=!en; }
-    function clearAutoTimer(){ if(autoTimer){ clearTimeout(autoTimer); autoTimer=null; } }
-    function renderOptions(options){ const cont=document.getElementById('optionsContainer'); cont.innerHTML=''; options.forEach(word=>{ const btn=document.createElement('button'); btn.className='option-btn'; btn.innerText=word; btn.disabled=answered; btn.addEventListener('click',(e)=>{ e.stopPropagation(); if(answered||isTransitioning){ document.getElementById('feedbackMsg').innerHTML='⏳ Round finished. Click "Skip" to continue.'; return; } if(btn.disabled) return; btn.disabled=true; speakWord(word); attemptCount++; if(word===currentCommonWord) handleCorrect(); else { wrongAudio.play().catch(e=>console.log); document.getElementById('feedbackMsg').innerHTML=`❌ "${word}" is not correct. Keep trying!`; document.getElementById('feedbackMsg').style.background="#f5ddbc"; } }); cont.appendChild(btn); }); }
-    function switchMode(newMode){ if(currentMode===newMode||isTransitioning) return; const msg=`Switch to ${newMode==="random"?"Random Mode":"Challenge Mode"}? Stats and progress will reset.\n\n${newMode==="random"? "[Random Mode]\nCards are completely random. Same word may appear many times.":"[Challenge Mode]\nEach of 57 words appears exactly once. Complete 57 rounds."}`; if(!confirm(msg)) return; clearAutoTimer(); currentMode=newMode; stats={1:0,2:0,3:0,4:0,skip:0}; roundsCompleted=0; if(currentMode==="challenge"){ remainingWords=[...wordBank]; for(let i=remainingWords.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1));[remainingWords[i],remainingWords[j]]=[remainingWords[j],remainingWords[i]]; } } updateStatsUI(); updateProgressUI(); answered=false; attemptCount=0; isTransitioning=false; nextPair=null; loadInitialPair(); document.getElementById('randomModeBtn').classList.toggle('active',currentMode==="random"); document.getElementById('challengeModeBtn').classList.toggle('active',currentMode==="challenge"); }
-    function resetGame(){ clearAutoTimer(); isTransitioning=false; stats={1:0,2:0,3:0,4:0,skip:0}; roundsCompleted=0; if(currentMode==="challenge"){ remainingWords=[...wordBank]; for(let i=remainingWords.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1));[remainingWords[i],remainingWords[j]]=[remainingWords[j],remainingWords[i]]; } } updateStatsUI(); updateProgressUI(); answered=false; attemptCount=0; nextPair=null; loadInitialPair(); }
-    function init(){ if(currentMode==="challenge"){ remainingWords=[...wordBank]; for(let i=remainingWords.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1));[remainingWords[i],remainingWords[j]]=[remainingWords[j],remainingWords[i]]; } } loadInitialPair(); document.getElementById('randomModeBtn').addEventListener('click',()=>switchMode("random")); document.getElementById('challengeModeBtn').addEventListener('click',()=>switchMode("challenge")); document.getElementById('skipBtn').addEventListener('click',()=>{ if(!isTransitioning && !answered) handleSkip(); }); document.getElementById('reshuffleBtn').addEventListener('click',()=>{ clearAutoTimer(); resetGame(); }); }
-    init();
+
+    function updateStatsUI() {
+        document.getElementById('stat1').innerText = stats[1];
+        document.getElementById('stat2').innerText = stats[2];
+        document.getElementById('stat3').innerText = stats[3];
+        document.getElementById('stat4').innerText = stats[4];
+        document.getElementById('statSkip').innerText = stats.skip;
+    }
+
+    function updateProgressUI() {
+        if (currentMode === "random") {
+            progressText.innerHTML = `Round: <span class="progress-count">${roundsCompleted}</span>`;
+        } else {
+            progressText.innerHTML = `Progress: <span class="progress-count">${roundsCompleted}</span> / ${totalCardsCount}`;
+        }
+    }
+
+    function showLoadingImages() {
+        leftImageBox.innerHTML = `<div class="loading-placeholder"><div class="loading-spinner"></div><div class="loading-text">Loading...</div></div>`;
+        rightImageBox.innerHTML = `<div class="loading-placeholder"><div class="loading-spinner"></div><div class="loading-text">Loading...</div></div>`;
+    }
+
+    function displayCardImages(cardA, cardB) {
+        leftImageBox.innerHTML = ''; rightImageBox.innerHTML = '';
+        const leftImg = document.createElement('img'); leftImg.id = 'leftImg';
+        const rightImg = document.createElement('img'); rightImg.id = 'rightImg';
+        leftImageBox.appendChild(leftImg); rightImageBox.appendChild(rightImg);
+        leftImg.src = `${currentImageBaseUrl}${cardA.id+1}.png`;
+        rightImg.src = `${currentImageBaseUrl}${cardB.id+1}.png`;
+        leftImg.onerror = () => { leftImg.src = `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200' viewBox='0 0 200 200'%3E%3Crect width='200' height='200' fill='%23e8d5b5'/%3E%3Ctext x='100' y='110' font-size='28' text-anchor='middle' fill='%2380552e'%3E${cardA.id+1}%3C/text%3E%3C/svg%3E`; };
+        rightImg.onerror = () => { rightImg.src = `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200' viewBox='0 0 200 200'%3E%3Crect width='200' height='200' fill='%23e8d5b5'/%3E%3Ctext x='100' y='110' font-size='28' text-anchor='middle' fill='%2380552e'%3E${cardB.id+1}%3C/text%3E%3C/svg%3E`; };
+        leftWordHint.innerHTML = `📖 ${cardA.words.length} icons`;
+        rightWordHint.innerHTML = `📖 ${cardB.words.length} icons`;
+    }
+
+    function preloadImages(cardA, cardB, onComplete) {
+        let count = 0;
+        const done = () => { count++; if (count === 2 && onComplete) onComplete(); };
+        const i1 = new Image(); i1.onload = done; i1.onerror = done; i1.src = `${currentImageBaseUrl}${cardA.id+1}.png`;
+        const i2 = new Image(); i2.onload = done; i2.onerror = done; i2.src = `${currentImageBaseUrl}${cardB.id+1}.png`;
+    }
+
+    function findCommonWord(cardA, cardB) {
+        const set = new Set(cardA.words);
+        for (let w of cardB.words) if (set.has(w)) return w;
+        return null;
+    }
+
+    function generateOptions(correctWord) {
+        let opts = new Set([correctWord]);
+        let candidates = currentWordBank.filter(w => w !== correctWord);
+        for (let i = candidates.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [candidates[i], candidates[j]] = [candidates[j], candidates[i]];
+        }
+        while (opts.size < 4 && candidates.length) opts.add(candidates.pop());
+        return Array.from(opts).sort(() => Math.random() - 0.5);
+    }
+
+    function generateRandomPair() {
+        let a = Math.floor(Math.random() * currentCards.length);
+        let b = Math.floor(Math.random() * currentCards.length);
+        while (a === b) b = Math.floor(Math.random() * currentCards.length);
+        return { cardA: currentCards[a], cardB: currentCards[b], commonWord: findCommonWord(currentCards[a], currentCards[b]) };
+    }
+
+    function generateChallengePair() {
+        if (remainingWords.length === 0) return null;
+        const idx = Math.floor(Math.random() * remainingWords.length);
+        const word = remainingWords[idx];
+        const candidates = currentCards.filter(c => c.words.includes(word));
+        if (candidates.length < 2) { remainingWords.splice(idx, 1); return generateChallengePair(); }
+        let a = Math.floor(Math.random() * candidates.length);
+        let b = Math.floor(Math.random() * candidates.length);
+        while (a === b && candidates.length > 1) b = Math.floor(Math.random() * candidates.length);
+        return { cardA: candidates[a], cardB: candidates[b], commonWord: word, usedWord: word };
+    }
+
+    function refreshNextPair() {
+        if (currentMode === "random") {
+            nextPair = generateRandomPair();
+            if (nextPair) preloadImages(nextPair.cardA, nextPair.cardB, () => {});
+        } else {
+            if (remainingWords.length > 0) {
+                nextPair = generateChallengePair();
+                if (nextPair) preloadImages(nextPair.cardA, nextPair.cardB, () => {});
+            } else nextPair = null;
+        }
+    }
+
+    function consumeCurrentAndPrepareNext() {
+        if (currentMode === "challenge" && currentPair?.usedWord) {
+            const idx = remainingWords.indexOf(currentPair.usedWord);
+            if (idx !== -1) remainingWords.splice(idx, 1);
+        }
+        roundsCompleted++;
+        updateProgressUI();
+        if (nextPair) {
+            currentPair = nextPair;
+            displayCardImages(currentPair.cardA, currentPair.cardB);
+            currentCommonWord = currentPair.commonWord;
+        } else {
+            if (currentMode === "random") currentPair = generateRandomPair();
+            else { currentPair = generateChallengePair(); if (!currentPair) { feedbackMsg.innerHTML = '🏆 Challenge completed! Press Reset to play again.'; return; } }
+            displayCardImages(currentPair.cardA, currentPair.cardB);
+            currentCommonWord = currentPair.commonWord;
+        }
+        refreshNextPair();
+        answered = false; attemptCount = 0;
+        enableSkipButton(true);
+        currentOptions = generateOptions(currentCommonWord);
+        renderOptions(currentOptions);
+        feedbackMsg.innerHTML = '🔍 Pick the word that appears on both cards.';
+        feedbackMsg.style.background = "#e7d6bd";
+        isTransitioning = false;
+    }
+
+    function recordCorrectAttempt() { stats[Math.min(attemptCount,4)]++; updateStatsUI(); }
+
+    function handleCorrect() {
+        rightAudio.play().catch(e=>console.log);
+        feedbackMsg.innerHTML = `✅ Perfect! Common word is "${currentCommonWord}"! 🎉`;
+        feedbackMsg.style.background = "#cae3b5";
+        document.getElementById('cardLeft').classList.add('card-glow');
+        document.getElementById('cardRight').classList.add('card-glow');
+        setTimeout(() => {
+            document.getElementById('cardLeft').classList.remove('card-glow');
+            document.getElementById('cardRight').classList.remove('card-glow');
+        }, 700);
+        recordCorrectAttempt();
+        answered = true; disableAllOptions(); enableSkipButton(false);
+        if (currentMode === "challenge" && remainingWords.length === 1 && currentPair?.usedWord) {
+            const idx = remainingWords.indexOf(currentPair.usedWord);
+            if (idx !== -1) remainingWords.splice(idx, 1);
+            roundsCompleted = totalCardsCount - remainingWords.length;
+            updateProgressUI();
+            if (remainingWords.length === 0) { feedbackMsg.innerHTML = '🏆 Challenge completed! Press Reset to play again.'; return; }
+        }
+        clearAutoTimer();
+        autoTimer = setTimeout(() => { if (!isTransitioning) { isTransitioning = true; consumeCurrentAndPrepareNext(); } autoTimer = null; }, 2000);
+    }
+
+    function handleSkip() {
+        if (answered || isTransitioning) return;
+        clearAutoTimer();
+        stats.skip++; updateStatsUI();
+        feedbackMsg.innerHTML = `⏭️ Skipped! The common word was "${currentCommonWord}".`;
+        feedbackMsg.style.background = "#f5ddbc";
+        answered = true; disableAllOptions(); enableSkipButton(false);
+        if (currentMode === "challenge" && remainingWords.length === 0) return;
+        isTransitioning = true;
+        consumeCurrentAndPrepareNext();
+    }
+
+    function disableAllOptions() { document.querySelectorAll('.option-btn').forEach(btn => btn.disabled = true); }
+    function enableSkipButton(en) { skipBtn.disabled = !en; }
+    function clearAutoTimer() { if (autoTimer) { clearTimeout(autoTimer); autoTimer = null; } }
+
+    function renderOptions(options) {
+        optionsContainer.innerHTML = '';
+        options.forEach(word => {
+            const btn = document.createElement('button');
+            btn.className = 'option-btn';
+            btn.innerText = word;
+            btn.disabled = answered;
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                if (answered || isTransitioning) { feedbackMsg.innerHTML = '⏳ Round finished. Click "Skip" to continue.'; return; }
+                if (btn.disabled) return;
+                btn.disabled = true;
+                speakWord(word);
+                attemptCount++;
+                if (word === currentCommonWord) handleCorrect();
+                else { wrongAudio.play().catch(e=>console.log); feedbackMsg.innerHTML = `❌ "${word}" is not correct. Keep trying!`; feedbackMsg.style.background = "#f5ddbc"; }
+            });
+            optionsContainer.appendChild(btn);
+        });
+    }
+
+    function loadTheme(themeId, themeData) {
+        currentThemeId = themeId;
+        currentWordBank = themeData.wordBank;
+        totalCardsCount = themeData.totalCards || 57;
+        currentImageBaseUrl = themeData.imageBaseUrl;
+        currentAnswerCards = themeData.answerCards || ["c1.png","c2.png","c3.png","c4.png"];
+        const cardsRaw = themeData.cardsData;
+        currentCards = cardsRaw.map((indices, cid) => ({ id: cid, words: indices.map(idx => currentWordBank[idx]) }));
+        // 重置游戏状态
+        stats = { 1:0, 2:0, 3:0, 4:0, skip:0 };
+        roundsCompleted = 0;
+        answered = false; attemptCount = 0; isTransitioning = false; nextPair = null;
+        updateStatsUI();
+        if (currentMode === "challenge") remainingWords = [...currentWordBank];
+        else remainingWords = [];
+        updateProgressUI();
+        // 刷新侧边栏答案卡
+        cardsListDiv.innerHTML = '';
+        for (let i = 0; i < currentAnswerCards.length; i++) {
+            const imgName = currentAnswerCards[i];
+            const cardDiv = document.createElement('div'); cardDiv.className = 'ref-card';
+            const img = document.createElement('img');
+            img.src = `${currentImageBaseUrl}${imgName}`;
+            img.alt = `Answer card ${i+1}`;
+            img.onerror = () => { img.src = `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200' viewBox='0 0 200 200'%3E%3Crect width='200' height='200' fill='%23e8d5b5'/%3E%3Ctext x='100' y='110' font-size='16' text-anchor='middle' fill='%2380552e'%3ECard ${i+1}%3C/text%3E%3C/svg%3E`; };
+            img.addEventListener('click', (e) => { e.stopPropagation(); modalImage.src = img.src; imageModal.classList.add('active'); });
+            cardDiv.appendChild(img);
+            const label = document.createElement('div'); label.className = 'card-label-small'; label.innerText = `Card ${i+1}`;
+            cardDiv.appendChild(label);
+            cardsListDiv.appendChild(cardDiv);
+        }
+        // 重新加载题目
+        showLoadingImages();
+        if (currentMode === "random") currentPair = generateRandomPair();
+        else { currentPair = generateChallengePair(); if (!currentPair) return; }
+        currentCommonWord = currentPair.commonWord;
+        preloadImages(currentPair.cardA, currentPair.cardB, () => {
+            displayCardImages(currentPair.cardA, currentPair.cardB);
+            refreshNextPair();
+            answered = false; attemptCount = 0; enableSkipButton(true);
+            currentOptions = generateOptions(currentCommonWord);
+            renderOptions(currentOptions);
+            feedbackMsg.innerHTML = '🔍 Pick the word that appears on both cards.';
+            feedbackMsg.style.background = "#e7d6bd";
+        });
+    }
+
+    async function initThemes() {
+        try {
+            const indexRes = await fetch('sets/index.json');
+            if (!indexRes.ok) throw new Error('Index not found');
+            const indexData = await indexRes.json();
+            const themes = indexData.availableSets;
+            themeSelect.innerHTML = '';
+            themes.forEach(theme => {
+                const option = document.createElement('option');
+                option.value = theme.id;
+                option.textContent = theme.name;
+                themeSelect.appendChild(option);
+            });
+            const savedTheme = localStorage.getItem('lastTheme') || themes[0]?.id;
+            if (savedTheme && themes.find(t => t.id === savedTheme)) themeSelect.value = savedTheme;
+            await loadThemeConfig(themeSelect.value);
+            themeSelect.addEventListener('change', async () => {
+                if (confirm(`Switch theme to ${themeSelect.options[themeSelect.selectedIndex].text}? All stats will reset.`)) {
+                    await loadThemeConfig(themeSelect.value);
+                    localStorage.setItem('lastTheme', themeSelect.value);
+                } else {
+                    themeSelect.value = currentThemeId;
+                }
+            });
+        } catch(e) { console.error(e); feedbackMsg.innerHTML = 'Error loading themes. Check sets/index.json'; }
+    }
+
+    async function loadThemeConfig(themeId) {
+        try {
+            const res = await fetch(`sets/${themeId}.json`);
+            if (!res.ok) throw new Error(`Theme ${themeId} not found`);
+            const data = await res.json();
+            loadTheme(themeId, data);
+        } catch(e) { console.error(e); feedbackMsg.innerHTML = `Failed to load theme ${themeId}`; }
+    }
+
+    function switchMode(newMode) {
+        if (currentMode === newMode || isTransitioning) return;
+        const msg = `Switch to ${newMode==="random"?"Random Mode":"Challenge Mode"}? Stats and progress will reset.`;
+        if (!confirm(msg)) return;
+        clearAutoTimer();
+        currentMode = newMode;
+        stats = { 1:0, 2:0, 3:0, 4:0, skip:0 };
+        roundsCompleted = 0;
+        if (currentMode === "challenge") remainingWords = [...currentWordBank];
+        else remainingWords = [];
+        updateStatsUI(); updateProgressUI();
+        answered = false; attemptCount = 0; isTransitioning = false; nextPair = null;
+        showLoadingImages();
+        if (currentMode === "random") currentPair = generateRandomPair();
+        else { currentPair = generateChallengePair(); if (!currentPair) return; }
+        currentCommonWord = currentPair.commonWord;
+        preloadImages(currentPair.cardA, currentPair.cardB, () => {
+            displayCardImages(currentPair.cardA, currentPair.cardB);
+            refreshNextPair();
+            enableSkipButton(true);
+            currentOptions = generateOptions(currentCommonWord);
+            renderOptions(currentOptions);
+            feedbackMsg.innerHTML = '🔍 Pick the word that appears on both cards.';
+            feedbackMsg.style.background = "#e7d6bd";
+        });
+        randomBtn.classList.toggle('active', currentMode === "random");
+        challengeBtn.classList.toggle('active', currentMode === "challenge");
+    }
+
+    function resetGame() {
+        clearAutoTimer(); isTransitioning = false;
+        stats = { 1:0, 2:0, 3:0, 4:0, skip:0 };
+        roundsCompleted = 0;
+        if (currentMode === "challenge") remainingWords = [...currentWordBank];
+        updateStatsUI(); updateProgressUI();
+        answered = false; attemptCount = 0; nextPair = null;
+        showLoadingImages();
+        if (currentMode === "random") currentPair = generateRandomPair();
+        else { currentPair = generateChallengePair(); if (!currentPair) return; }
+        currentCommonWord = currentPair.commonWord;
+        preloadImages(currentPair.cardA, currentPair.cardB, () => {
+            displayCardImages(currentPair.cardA, currentPair.cardB);
+            refreshNextPair();
+            enableSkipButton(true);
+            currentOptions = generateOptions(currentCommonWord);
+            renderOptions(currentOptions);
+            feedbackMsg.innerHTML = '🔍 Pick the word that appears on both cards.';
+        });
+    }
+
+    // 侧边栏交互
+    refTrigger.addEventListener('click', () => { sidebarOverlay.classList.add('active'); refSidebar.classList.add('open'); });
+    closeSidebarBtn.addEventListener('click', () => { sidebarOverlay.classList.remove('active'); refSidebar.classList.remove('open'); });
+    sidebarOverlay.addEventListener('click', () => { sidebarOverlay.classList.remove('active'); refSidebar.classList.remove('open'); });
+    imageModal.addEventListener('click', () => imageModal.classList.remove('active'));
+
+    randomBtn.addEventListener('click', () => switchMode("random"));
+    challengeBtn.addEventListener('click', () => switchMode("challenge"));
+    skipBtn.addEventListener('click', () => { if (!isTransitioning && !answered) handleSkip(); });
+    reshuffleBtn.addEventListener('click', () => { clearAutoTimer(); resetGame(); });
+
+    initThemes();
 </script>
 </body>
 </html>
