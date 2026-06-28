@@ -22,7 +22,6 @@
             position: relative;
         }
 
-        /* 主游戏容器 */
         .game-container {
             max-width: 1400px;
             width: 100%;
@@ -35,7 +34,6 @@
             z-index: 1;
         }
 
-        /* 主题选择栏 - 在mode-bar同一行右侧增加 */
         .top-bar {
             display: flex;
             justify-content: space-between;
@@ -169,11 +167,11 @@
         }
         .card-image img {
             max-width: 95%;
-    max-height: 95%;
-    object-fit: contain;
-    border-radius: 20px;
-    transform: scale(1.1);
-    transition: transform 0.2s ease;
+            max-height: 95%;
+            object-fit: contain;
+            border-radius: 20px;
+            transform: scale(1.1);
+            transition: transform 0.2s ease;
         }
         .loading-placeholder {
             width: 100%;
@@ -313,7 +311,6 @@
             100% { background-color: #fffaf0; box-shadow: 0 0 0 0 #ffd58c; }
         }
 
-        /* 左侧触发按钮 */
         .ref-trigger {
             position: fixed;
             left: 12px;
@@ -337,7 +334,6 @@
         }
         .ref-trigger:active { transform: translateY(-50%) scale(0.96); }
 
-        /* 侧边栏 */
         .sidebar-overlay {
             position: fixed;
             top: 0;
@@ -527,7 +523,7 @@
 <script>
     // --------------------------------------------------------------
     // 全局状态
-    let currentMode = "random";          // "random" or "challenge"
+    let currentMode = "random";
     let stats = { 1:0, 2:0, 3:0, 4:0, skip:0 };
     let roundsCompleted = 0;
     let remainingWords = [];
@@ -538,14 +534,12 @@
     let currentCommonWord = null;
     let currentThemeId = null;
 
-    // 动态数据
     let currentWordBank = [];
     let currentCards = [];
     let currentImageBaseUrl = "";
     let currentAnswerCards = [];
     let totalCardsCount = 57;
 
-    // DOM 元素
     const randomBtn = document.getElementById('randomModeBtn');
     const challengeBtn = document.getElementById('challengeModeBtn');
     const skipBtn = document.getElementById('skipBtn');
@@ -566,11 +560,9 @@
     const refSidebar = document.getElementById('refSidebar');
     const closeSidebarBtn = document.getElementById('closeSidebarBtn');
 
-    // 音频 (路径固定)
     const rightAudio = new Audio('sounds/right.mp3');
     const wrongAudio = new Audio('sounds/wrong.mp3');
 
-    // 辅助函数
     function speakWord(word) {
         if (window.speechSynthesis) {
             window.speechSynthesis.cancel();
@@ -645,18 +637,23 @@
         return { cardA: currentCards[a], cardB: currentCards[b], commonWord: findCommonWord(currentCards[a], currentCards[b]) };
     }
 
+    // ========== 修复：generateChallengePair 保持不变 ==========
     function generateChallengePair() {
         if (remainingWords.length === 0) return null;
         const idx = Math.floor(Math.random() * remainingWords.length);
         const word = remainingWords[idx];
         const candidates = currentCards.filter(c => c.words.includes(word));
-        if (candidates.length < 2) { remainingWords.splice(idx, 1); return generateChallengePair(); }
+        if (candidates.length < 2) {
+            remainingWords.splice(idx, 1);
+            return generateChallengePair();
+        }
         let a = Math.floor(Math.random() * candidates.length);
         let b = Math.floor(Math.random() * candidates.length);
         while (a === b && candidates.length > 1) b = Math.floor(Math.random() * candidates.length);
         return { cardA: candidates[a], cardB: candidates[b], commonWord: word, usedWord: word };
     }
 
+    // ========== 修复：refreshNextPair 增加 remainingWords 判断 ==========
     function refreshNextPair() {
         if (currentMode === "random") {
             nextPair = generateRandomPair();
@@ -665,29 +662,47 @@
             if (remainingWords.length > 0) {
                 nextPair = generateChallengePair();
                 if (nextPair) preloadImages(nextPair.cardA, nextPair.cardB, () => {});
-            } else nextPair = null;
+            } else {
+                nextPair = null;
+            }
         }
     }
 
+    // ========== 修复：consumeCurrentAndPrepareNext 先移除再切换 ==========
     function consumeCurrentAndPrepareNext() {
+        // 1. 先移除当前使用的单词
         if (currentMode === "challenge" && currentPair?.usedWord) {
             const idx = remainingWords.indexOf(currentPair.usedWord);
             if (idx !== -1) remainingWords.splice(idx, 1);
         }
+        
         roundsCompleted++;
         updateProgressUI();
+        
+        // 2. 再切换到下一组（此时 remainingWords 已更新）
         if (nextPair) {
             currentPair = nextPair;
             displayCardImages(currentPair.cardA, currentPair.cardB);
             currentCommonWord = currentPair.commonWord;
         } else {
-            if (currentMode === "random") currentPair = generateRandomPair();
-            else { currentPair = generateChallengePair(); if (!currentPair) { feedbackMsg.innerHTML = '🏆 Challenge completed! Press Reset to play again.'; return; } }
+            if (currentMode === "random") {
+                currentPair = generateRandomPair();
+            } else {
+                currentPair = generateChallengePair();
+                if (!currentPair) {
+                    feedbackMsg.innerHTML = '🏆 Challenge completed! Press Reset to play again.';
+                    return;
+                }
+            }
             displayCardImages(currentPair.cardA, currentPair.cardB);
             currentCommonWord = currentPair.commonWord;
         }
+        
+        // 3. 然后基于更新后的 remainingWords 预加载下一组
         refreshNextPair();
-        answered = false; attemptCount = 0;
+        
+        answered = false;
+        attemptCount = 0;
         enableSkipButton(true);
         currentOptions = generateOptions(currentCommonWord);
         renderOptions(currentOptions);
@@ -709,26 +724,44 @@
             document.getElementById('cardRight').classList.remove('card-glow');
         }, 700);
         recordCorrectAttempt();
-        answered = true; disableAllOptions(); enableSkipButton(false);
+        answered = true;
+        disableAllOptions();
+        enableSkipButton(false);
+        
         if (currentMode === "challenge" && remainingWords.length === 1 && currentPair?.usedWord) {
             const idx = remainingWords.indexOf(currentPair.usedWord);
             if (idx !== -1) remainingWords.splice(idx, 1);
             roundsCompleted = totalCardsCount - remainingWords.length;
             updateProgressUI();
-            if (remainingWords.length === 0) { feedbackMsg.innerHTML = '🏆 Challenge completed! Press Reset to play again.'; return; }
+            if (remainingWords.length === 0) {
+                feedbackMsg.innerHTML = '🏆 Challenge completed! Press Reset to play again. 🏆';
+                return;
+            }
         }
+        
         clearAutoTimer();
-        autoTimer = setTimeout(() => { if (!isTransitioning) { isTransitioning = true; consumeCurrentAndPrepareNext(); } autoTimer = null; }, 2000);
+        autoTimer = setTimeout(() => {
+            if (!isTransitioning) {
+                isTransitioning = true;
+                consumeCurrentAndPrepareNext();
+            }
+            autoTimer = null;
+        }, 2000);
     }
 
     function handleSkip() {
         if (answered || isTransitioning) return;
         clearAutoTimer();
-        stats.skip++; updateStatsUI();
+        stats.skip++;
+        updateStatsUI();
         feedbackMsg.innerHTML = `⏭️ Skipped! The common word was "${currentCommonWord}".`;
         feedbackMsg.style.background = "#f5ddbc";
-        answered = true; disableAllOptions(); enableSkipButton(false);
+        answered = true;
+        disableAllOptions();
+        enableSkipButton(false);
+        
         if (currentMode === "challenge" && remainingWords.length === 0) return;
+        
         isTransitioning = true;
         consumeCurrentAndPrepareNext();
     }
@@ -766,7 +799,7 @@
         currentAnswerCards = themeData.answerCards || ["c1.png","c2.png","c3.png","c4.png"];
         const cardsRaw = themeData.cardsData;
         currentCards = cardsRaw.map((indices, cid) => ({ id: cid, words: indices.map(idx => currentWordBank[idx]) }));
-        // 重置游戏状态
+        
         stats = { 1:0, 2:0, 3:0, 4:0, skip:0 };
         roundsCompleted = 0;
         answered = false; attemptCount = 0; isTransitioning = false; nextPair = null;
@@ -774,7 +807,7 @@
         if (currentMode === "challenge") remainingWords = [...currentWordBank];
         else remainingWords = [];
         updateProgressUI();
-        // 刷新侧边栏答案卡
+        
         cardsListDiv.innerHTML = '';
         for (let i = 0; i < currentAnswerCards.length; i++) {
             const imgName = currentAnswerCards[i];
@@ -789,7 +822,7 @@
             cardDiv.appendChild(label);
             cardsListDiv.appendChild(cardDiv);
         }
-        // 重新加载题目
+        
         showLoadingImages();
         if (currentMode === "random") currentPair = generateRandomPair();
         else { currentPair = generateChallengePair(); if (!currentPair) return; }
@@ -842,41 +875,41 @@
     }
 
     function switchMode(newMode) {
-    if (currentMode === newMode || isTransitioning) return;
-    
-    let msg = "";
-    if (newMode === "random") {
-        msg = "Switch to Random Mode?\n\nStats and progress will reset.\n\n[Random Mode]\n- Cards are completely random\n- Same word may appear many times\n- No fixed ending, play as long as you like\n- Progress shows total rounds played";
-    } else {
-        msg = "Switch to Challenge Mode?\n\nStats and progress will reset.\n\n[Challenge Mode]\n- Each of the 57 words appears exactly once\n- Complete all 57 rounds to win\n- Words are randomized each session\n- Progress shows remaining words (x/57)";
+        if (currentMode === newMode || isTransitioning) return;
+        
+        let msg = "";
+        if (newMode === "random") {
+            msg = "Switch to Random Mode?\n\nStats and progress will reset.\n\n[Random Mode]\n- Cards are completely random\n- Same word may appear many times\n- No fixed ending, play as long as you like\n- Progress shows total rounds played";
+        } else {
+            msg = "Switch to Challenge Mode?\n\nStats and progress will reset.\n\n[Challenge Mode]\n- Each of the 57 words appears exactly once\n- Complete all 57 rounds to win\n- Words are randomized each session\n- Progress shows remaining words (x/57)";
+        }
+        
+        if (!confirm(msg)) return;
+        
+        clearAutoTimer();
+        currentMode = newMode;
+        stats = { 1:0, 2:0, 3:0, 4:0, skip:0 };
+        roundsCompleted = 0;
+        if (currentMode === "challenge") remainingWords = [...currentWordBank];
+        else remainingWords = [];
+        updateStatsUI(); updateProgressUI();
+        answered = false; attemptCount = 0; isTransitioning = false; nextPair = null;
+        showLoadingImages();
+        if (currentMode === "random") currentPair = generateRandomPair();
+        else { currentPair = generateChallengePair(); if (!currentPair) return; }
+        currentCommonWord = currentPair.commonWord;
+        preloadImages(currentPair.cardA, currentPair.cardB, () => {
+            displayCardImages(currentPair.cardA, currentPair.cardB);
+            refreshNextPair();
+            enableSkipButton(true);
+            currentOptions = generateOptions(currentCommonWord);
+            renderOptions(currentOptions);
+            feedbackMsg.innerHTML = '🔍 Pick the word that appears on both cards.';
+            feedbackMsg.style.background = "#e7d6bd";
+        });
+        randomBtn.classList.toggle('active', currentMode === "random");
+        challengeBtn.classList.toggle('active', currentMode === "challenge");
     }
-    
-    if (!confirm(msg)) return;
-    
-    clearAutoTimer();
-    currentMode = newMode;
-    stats = { 1:0, 2:0, 3:0, 4:0, skip:0 };
-    roundsCompleted = 0;
-    if (currentMode === "challenge") remainingWords = [...currentWordBank];
-    else remainingWords = [];
-    updateStatsUI(); updateProgressUI();
-    answered = false; attemptCount = 0; isTransitioning = false; nextPair = null;
-    showLoadingImages();
-    if (currentMode === "random") currentPair = generateRandomPair();
-    else { currentPair = generateChallengePair(); if (!currentPair) return; }
-    currentCommonWord = currentPair.commonWord;
-    preloadImages(currentPair.cardA, currentPair.cardB, () => {
-        displayCardImages(currentPair.cardA, currentPair.cardB);
-        refreshNextPair();
-        enableSkipButton(true);
-        currentOptions = generateOptions(currentCommonWord);
-        renderOptions(currentOptions);
-        feedbackMsg.innerHTML = '🔍 Pick the word that appears on both cards.';
-        feedbackMsg.style.background = "#e7d6bd";
-    });
-    randomBtn.classList.toggle('active', currentMode === "random");
-    challengeBtn.classList.toggle('active', currentMode === "challenge");
-}
 
     function resetGame() {
         clearAutoTimer(); isTransitioning = false;
@@ -899,7 +932,6 @@
         });
     }
 
-    // 侧边栏交互
     refTrigger.addEventListener('click', () => { sidebarOverlay.classList.add('active'); refSidebar.classList.add('open'); });
     closeSidebarBtn.addEventListener('click', () => { sidebarOverlay.classList.remove('active'); refSidebar.classList.remove('open'); });
     sidebarOverlay.addEventListener('click', () => { sidebarOverlay.classList.remove('active'); refSidebar.classList.remove('open'); });
