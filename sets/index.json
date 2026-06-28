@@ -1,6 +1,7 @@
 {
     "availableSets": [
-        { "id": "P2_T2_BQ3", "name": "P2_T2_BQ3 - Nature" },
-        { "id": "P2_T2_BQ4", "name": "P2_T2_BQ4 - Weather" }
+        { "id": "P2_T2_BQ3", "name": "P2_T2_BQ3 - Weather & Seasons" },
+        { "id": "P2_T2_BQ4", "name": "P2_T2_BQ4 - Weather" },
+        { "id": "Common_knowledge", "name": "Common knowledge - National Flags" }
     ]
 }
