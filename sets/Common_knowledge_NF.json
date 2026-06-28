@@ -1,7 +1,7 @@
 {
     "setId": "Common_knowledge",
     "setName": "Common knowledge - National Flags",
-    "imageBaseUrl": "images/Common_knowledge/",
+    "imageBaseUrl": "images/Common_knowledge_NF/",
     "wordBank": [
         "Canada", "Mexico", "USA", "Algeria", "Argentina", "Australia", "Austria", "Belgium",
         "Bosnia and Herzegovina", "Brazil", "Cabo Verde", "Colombia", "Congo DR", "Côte d'Ivoire", "Croatia", "Curaçao",
