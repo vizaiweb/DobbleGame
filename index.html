@@ -528,7 +528,8 @@
     let roundsCompleted = 0;
     let remainingWords = [];
     let currentPair = null;
-    let nextPair = null;
+    let nextPair = null;          // 仅用于 Random Mode 预加载
+    let preloadImagesTimer = null; // 用于独立预加载的定时器
     let answered = false, attemptCount = 0, autoTimer = null, currentOptions = [];
     let isTransitioning = false;
     let currentCommonWord = null;
@@ -593,24 +594,69 @@
         rightImageBox.innerHTML = `<div class="loading-placeholder"><div class="loading-spinner"></div><div class="loading-text">Loading...</div></div>`;
     }
 
+    // 核心：显示当前题目的卡片图片（实时生成模式的显示函数）
     function displayCardImages(cardA, cardB) {
         leftImageBox.innerHTML = ''; rightImageBox.innerHTML = '';
         const leftImg = document.createElement('img'); leftImg.id = 'leftImg';
         const rightImg = document.createElement('img'); rightImg.id = 'rightImg';
         leftImageBox.appendChild(leftImg); rightImageBox.appendChild(rightImg);
+        
+        // 直接设置 src，触发图片加载
         leftImg.src = `${currentImageBaseUrl}${cardA.id+1}.png`;
         rightImg.src = `${currentImageBaseUrl}${cardB.id+1}.png`;
+        
         leftImg.onerror = () => { leftImg.src = `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200' viewBox='0 0 200 200'%3E%3Crect width='200' height='200' fill='%23e8d5b5'/%3E%3Ctext x='100' y='110' font-size='28' text-anchor='middle' fill='%2380552e'%3E${cardA.id+1}%3C/text%3E%3C/svg%3E`; };
         rightImg.onerror = () => { rightImg.src = `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200' viewBox='0 0 200 200'%3E%3Crect width='200' height='200' fill='%23e8d5b5'/%3E%3Ctext x='100' y='110' font-size='28' text-anchor='middle' fill='%2380552e'%3E${cardB.id+1}%3C/text%3E%3C/svg%3E`; };
+        
         leftWordHint.innerHTML = `📖 ${cardA.words.length} icons`;
         rightWordHint.innerHTML = `📖 ${cardB.words.length} icons`;
+        
+        // 图片显示后，启动独立预加载（预加载下一题的图片，但不生成下一题内容）
+        // 使用 setTimeout 确保当前图片加载优先
+        if (preloadImagesTimer) clearTimeout(preloadImagesTimer);
+        preloadImagesTimer = setTimeout(() => {
+            // 生成下一组数据（用于图片预加载）
+            let nextPairData = null;
+            if (currentMode === "random") {
+                nextPairData = generateRandomPair();
+            } else {
+                if (remainingWords.length > 0) {
+                    nextPairData = generateChallengePair();
+                }
+            }
+            if (nextPairData) {
+                // 只预加载图片，不存储为 nextPair
+                const img1 = new Image();
+                const img2 = new Image();
+                img1.src = `${currentImageBaseUrl}${nextPairData.cardA.id+1}.png`;
+                img2.src = `${currentImageBaseUrl}${nextPairData.cardB.id+1}.png`;
+            }
+            preloadImagesTimer = null;
+        }, 100); // 延迟 100ms，让当前图片先加载
     }
 
-    function preloadImages(cardA, cardB, onComplete) {
-        let count = 0;
-        const done = () => { count++; if (count === 2 && onComplete) onComplete(); };
-        const i1 = new Image(); i1.onload = done; i1.onerror = done; i1.src = `${currentImageBaseUrl}${cardA.id+1}.png`;
-        const i2 = new Image(); i2.onload = done; i2.onerror = done; i2.src = `${currentImageBaseUrl}${cardB.id+1}.png`;
+    // 随机模式专用：生成随机题目（保留预加载机制，但改为独立预加载）
+    function generateRandomPair() {
+        let a = Math.floor(Math.random() * currentCards.length);
+        let b = Math.floor(Math.random() * currentCards.length);
+        while (a === b) b = Math.floor(Math.random() * currentCards.length);
+        return { cardA: currentCards[a], cardB: currentCards[b], commonWord: findCommonWord(currentCards[a], currentCards[b]) };
+    }
+
+    // 挑战模式专用：生成实时题目（不涉及预加载逻辑）
+    function generateChallengePair() {
+        if (remainingWords.length === 0) return null;
+        const idx = Math.floor(Math.random() * remainingWords.length);
+        const word = remainingWords[idx];
+        const candidates = currentCards.filter(c => c.words.includes(word));
+        if (candidates.length < 2) {
+            remainingWords.splice(idx, 1);
+            return generateChallengePair();
+        }
+        let a = Math.floor(Math.random() * candidates.length);
+        let b = Math.floor(Math.random() * candidates.length);
+        while (a === b && candidates.length > 1) b = Math.floor(Math.random() * candidates.length);
+        return { cardA: candidates[a], cardB: candidates[b], commonWord: word, usedWord: word };
     }
 
     function findCommonWord(cardA, cardB) {
@@ -630,85 +676,78 @@
         return Array.from(opts).sort(() => Math.random() - 0.5);
     }
 
-    function generateRandomPair() {
-        let a = Math.floor(Math.random() * currentCards.length);
-        let b = Math.floor(Math.random() * currentCards.length);
-        while (a === b) b = Math.floor(Math.random() * currentCards.length);
-        return { cardA: currentCards[a], cardB: currentCards[b], commonWord: findCommonWord(currentCards[a], currentCards[b]) };
-    }
-
-    // ========== 修复：generateChallengePair 保持不变 ==========
-    function generateChallengePair() {
-        if (remainingWords.length === 0) return null;
-        const idx = Math.floor(Math.random() * remainingWords.length);
-        const word = remainingWords[idx];
-        const candidates = currentCards.filter(c => c.words.includes(word));
-        if (candidates.length < 2) {
-            remainingWords.splice(idx, 1);
-            return generateChallengePair();
-        }
-        let a = Math.floor(Math.random() * candidates.length);
-        let b = Math.floor(Math.random() * candidates.length);
-        while (a === b && candidates.length > 1) b = Math.floor(Math.random() * candidates.length);
-        return { cardA: candidates[a], cardB: candidates[b], commonWord: word, usedWord: word };
-    }
-
-    // ========== 修复：refreshNextPair 增加 remainingWords 判断 ==========
-    function refreshNextPair() {
-        if (currentMode === "random") {
-            nextPair = generateRandomPair();
-            if (nextPair) preloadImages(nextPair.cardA, nextPair.cardB, () => {});
-        } else {
-            if (remainingWords.length > 0) {
-                nextPair = generateChallengePair();
-                if (nextPair) preloadImages(nextPair.cardA, nextPair.cardB, () => {});
-            } else {
-                nextPair = null;
-            }
-        }
-    }
-
-    // ========== 修复：consumeCurrentAndPrepareNext 先移除再切换 ==========
-    function consumeCurrentAndPrepareNext() {
+    // 核心：实时生成下一题（先移除单词，再生成，再显示，最后预加载图片）
+    function loadNextChallengePair() {
+        if (currentMode !== "challenge") return;
         // 1. 先移除当前使用的单词
-        if (currentMode === "challenge" && currentPair?.usedWord) {
+        if (currentPair?.usedWord) {
             const idx = remainingWords.indexOf(currentPair.usedWord);
             if (idx !== -1) remainingWords.splice(idx, 1);
         }
         
-        roundsCompleted++;
-        updateProgressUI();
-        
-        // 2. 再切换到下一组（此时 remainingWords 已更新）
-        if (nextPair) {
-            currentPair = nextPair;
-            displayCardImages(currentPair.cardA, currentPair.cardB);
-            currentCommonWord = currentPair.commonWord;
-        } else {
-            if (currentMode === "random") {
-                currentPair = generateRandomPair();
-            } else {
-                currentPair = generateChallengePair();
-                if (!currentPair) {
-                    feedbackMsg.innerHTML = '🏆 Challenge completed! Press Reset to play again.';
-                    return;
-                }
-            }
-            displayCardImages(currentPair.cardA, currentPair.cardB);
-            currentCommonWord = currentPair.commonWord;
+        // 2. 检查是否全部完成
+        if (remainingWords.length === 0) {
+            feedbackMsg.innerHTML = '🏆 Challenge completed! Press Reset to play again. 🏆';
+            answered = true;
+            disableAllOptions();
+            enableSkipButton(false);
+            return;
         }
         
-        // 3. 然后基于更新后的 remainingWords 预加载下一组
-        refreshNextPair();
+        // 3. 实时生成下一题
+        const newPair = generateChallengePair();
+        if (!newPair) {
+            feedbackMsg.innerHTML = '🏆 Challenge completed! Press Reset to play again. 🏆';
+            answered = true;
+            disableAllOptions();
+            enableSkipButton(false);
+            return;
+        }
         
+        currentPair = newPair;
+        currentCommonWord = currentPair.commonWord;
+        roundsCompleted++;
+        updateProgressUI();
         answered = false;
         attemptCount = 0;
         enableSkipButton(true);
+        
+        // 4. 显示题目（图片 + 选项）
+        displayCardImages(currentPair.cardA, currentPair.cardB);
         currentOptions = generateOptions(currentCommonWord);
         renderOptions(currentOptions);
         feedbackMsg.innerHTML = '🔍 Pick the word that appears on both cards.';
         feedbackMsg.style.background = "#e7d6bd";
         isTransitioning = false;
+    }
+
+    // 随机模式：加载下一题（保留预加载机制，但改为独立预加载）
+    function loadNextRandomPair() {
+        if (currentMode !== "random") return;
+        const newPair = generateRandomPair();
+        currentPair = newPair;
+        currentCommonWord = currentPair.commonWord;
+        roundsCompleted++;
+        updateProgressUI();
+        answered = false;
+        attemptCount = 0;
+        enableSkipButton(true);
+        
+        displayCardImages(currentPair.cardA, currentPair.cardB);
+        currentOptions = generateOptions(currentCommonWord);
+        renderOptions(currentOptions);
+        feedbackMsg.innerHTML = '🔍 Pick the word that appears on both cards.';
+        feedbackMsg.style.background = "#e7d6bd";
+        isTransitioning = false;
+    }
+
+    // 通用加载函数：根据当前模式调用对应方法
+    function loadNextPair() {
+        if (currentMode === "random") {
+            loadNextRandomPair();
+        } else {
+            loadNextChallengePair();
+        }
     }
 
     function recordCorrectAttempt() { stats[Math.min(attemptCount,4)]++; updateStatsUI(); }
@@ -728,22 +767,16 @@
         disableAllOptions();
         enableSkipButton(false);
         
-        if (currentMode === "challenge" && remainingWords.length === 1 && currentPair?.usedWord) {
-            const idx = remainingWords.indexOf(currentPair.usedWord);
-            if (idx !== -1) remainingWords.splice(idx, 1);
-            roundsCompleted = totalCardsCount - remainingWords.length;
-            updateProgressUI();
-            if (remainingWords.length === 0) {
-                feedbackMsg.innerHTML = '🏆 Challenge completed! Press Reset to play again. 🏆';
-                return;
-            }
+        // 挑战模式下，检查是否最后一个单词（已在 loadNextChallengePair 中处理，但这里也需要处理特殊情况）
+        if (currentMode === "challenge") {
+            // 如果 remainingWords 中只剩当前单词，但尚未移除，在 loadNextChallengePair 中会处理
         }
         
         clearAutoTimer();
         autoTimer = setTimeout(() => {
             if (!isTransitioning) {
                 isTransitioning = true;
-                consumeCurrentAndPrepareNext();
+                loadNextPair();  // 实时生成下一题 + 独立预加载
             }
             autoTimer = null;
         }, 2000);
@@ -760,10 +793,8 @@
         disableAllOptions();
         enableSkipButton(false);
         
-        if (currentMode === "challenge" && remainingWords.length === 0) return;
-        
         isTransitioning = true;
-        consumeCurrentAndPrepareNext();
+        loadNextPair(); // 实时生成下一题 + 独立预加载
     }
 
     function disableAllOptions() { document.querySelectorAll('.option-btn').forEach(btn => btn.disabled = true); }
@@ -802,12 +833,13 @@
         
         stats = { 1:0, 2:0, 3:0, 4:0, skip:0 };
         roundsCompleted = 0;
-        answered = false; attemptCount = 0; isTransitioning = false; nextPair = null;
+        answered = false; attemptCount = 0; isTransitioning = false;
         updateStatsUI();
         if (currentMode === "challenge") remainingWords = [...currentWordBank];
         else remainingWords = [];
         updateProgressUI();
         
+        // 刷新侧边栏答案卡
         cardsListDiv.innerHTML = '';
         for (let i = 0; i < currentAnswerCards.length; i++) {
             const imgName = currentAnswerCards[i];
@@ -824,18 +856,39 @@
         }
         
         showLoadingImages();
-        if (currentMode === "random") currentPair = generateRandomPair();
-        else { currentPair = generateChallengePair(); if (!currentPair) return; }
-        currentCommonWord = currentPair.commonWord;
-        preloadImages(currentPair.cardA, currentPair.cardB, () => {
-            displayCardImages(currentPair.cardA, currentPair.cardB);
-            refreshNextPair();
-            answered = false; attemptCount = 0; enableSkipButton(true);
+        // 初始化加载第一题
+        if (currentMode === "random") {
+            const initialPair = generateRandomPair();
+            currentPair = initialPair;
+            currentCommonWord = initialPair.commonWord;
+            roundsCompleted = 1;
+            updateProgressUI();
+            displayCardImages(initialPair.cardA, initialPair.cardB);
             currentOptions = generateOptions(currentCommonWord);
             renderOptions(currentOptions);
             feedbackMsg.innerHTML = '🔍 Pick the word that appears on both cards.';
             feedbackMsg.style.background = "#e7d6bd";
-        });
+            answered = false; attemptCount = 0; enableSkipButton(true);
+        } else {
+            const initialPair = generateChallengePair();
+            if (initialPair) {
+                currentPair = initialPair;
+                currentCommonWord = initialPair.commonWord;
+                roundsCompleted = 1;
+                updateProgressUI();
+                displayCardImages(initialPair.cardA, initialPair.cardB);
+                currentOptions = generateOptions(currentCommonWord);
+                renderOptions(currentOptions);
+                feedbackMsg.innerHTML = '🔍 Pick the word that appears on both cards.';
+                feedbackMsg.style.background = "#e7d6bd";
+                answered = false; attemptCount = 0; enableSkipButton(true);
+            } else {
+                feedbackMsg.innerHTML = '🏆 Challenge completed! Press Reset to play again. 🏆';
+                answered = true;
+                disableAllOptions();
+                enableSkipButton(false);
+            }
+        }
     }
 
     async function initThemes() {
@@ -893,20 +946,43 @@
         if (currentMode === "challenge") remainingWords = [...currentWordBank];
         else remainingWords = [];
         updateStatsUI(); updateProgressUI();
-        answered = false; attemptCount = 0; isTransitioning = false; nextPair = null;
+        answered = false; attemptCount = 0; isTransitioning = false;
         showLoadingImages();
-        if (currentMode === "random") currentPair = generateRandomPair();
-        else { currentPair = generateChallengePair(); if (!currentPair) return; }
-        currentCommonWord = currentPair.commonWord;
-        preloadImages(currentPair.cardA, currentPair.cardB, () => {
-            displayCardImages(currentPair.cardA, currentPair.cardB);
-            refreshNextPair();
-            enableSkipButton(true);
+        
+        // 初始化第一题
+        if (currentMode === "random") {
+            const initialPair = generateRandomPair();
+            currentPair = initialPair;
+            currentCommonWord = initialPair.commonWord;
+            roundsCompleted = 1;
+            updateProgressUI();
+            displayCardImages(initialPair.cardA, initialPair.cardB);
             currentOptions = generateOptions(currentCommonWord);
             renderOptions(currentOptions);
             feedbackMsg.innerHTML = '🔍 Pick the word that appears on both cards.';
             feedbackMsg.style.background = "#e7d6bd";
-        });
+            answered = false; attemptCount = 0; enableSkipButton(true);
+        } else {
+            const initialPair = generateChallengePair();
+            if (initialPair) {
+                currentPair = initialPair;
+                currentCommonWord = initialPair.commonWord;
+                roundsCompleted = 1;
+                updateProgressUI();
+                displayCardImages(initialPair.cardA, initialPair.cardB);
+                currentOptions = generateOptions(currentCommonWord);
+                renderOptions(currentOptions);
+                feedbackMsg.innerHTML = '🔍 Pick the word that appears on both cards.';
+                feedbackMsg.style.background = "#e7d6bd";
+                answered = false; attemptCount = 0; enableSkipButton(true);
+            } else {
+                feedbackMsg.innerHTML = '🏆 Challenge completed! Press Reset to play again. 🏆';
+                answered = true;
+                disableAllOptions();
+                enableSkipButton(false);
+            }
+        }
+        
         randomBtn.classList.toggle('active', currentMode === "random");
         challengeBtn.classList.toggle('active', currentMode === "challenge");
     }
@@ -916,20 +992,43 @@
         stats = { 1:0, 2:0, 3:0, 4:0, skip:0 };
         roundsCompleted = 0;
         if (currentMode === "challenge") remainingWords = [...currentWordBank];
+        else remainingWords = [];
         updateStatsUI(); updateProgressUI();
-        answered = false; attemptCount = 0; nextPair = null;
+        answered = false; attemptCount = 0;
         showLoadingImages();
-        if (currentMode === "random") currentPair = generateRandomPair();
-        else { currentPair = generateChallengePair(); if (!currentPair) return; }
-        currentCommonWord = currentPair.commonWord;
-        preloadImages(currentPair.cardA, currentPair.cardB, () => {
-            displayCardImages(currentPair.cardA, currentPair.cardB);
-            refreshNextPair();
-            enableSkipButton(true);
+        
+        if (currentMode === "random") {
+            const initialPair = generateRandomPair();
+            currentPair = initialPair;
+            currentCommonWord = initialPair.commonWord;
+            roundsCompleted = 1;
+            updateProgressUI();
+            displayCardImages(initialPair.cardA, initialPair.cardB);
             currentOptions = generateOptions(currentCommonWord);
             renderOptions(currentOptions);
             feedbackMsg.innerHTML = '🔍 Pick the word that appears on both cards.';
-        });
+            feedbackMsg.style.background = "#e7d6bd";
+            answered = false; attemptCount = 0; enableSkipButton(true);
+        } else {
+            const initialPair = generateChallengePair();
+            if (initialPair) {
+                currentPair = initialPair;
+                currentCommonWord = initialPair.commonWord;
+                roundsCompleted = 1;
+                updateProgressUI();
+                displayCardImages(initialPair.cardA, initialPair.cardB);
+                currentOptions = generateOptions(currentCommonWord);
+                renderOptions(currentOptions);
+                feedbackMsg.innerHTML = '🔍 Pick the word that appears on both cards.';
+                feedbackMsg.style.background = "#e7d6bd";
+                answered = false; attemptCount = 0; enableSkipButton(true);
+            } else {
+                feedbackMsg.innerHTML = '🏆 Challenge completed! Press Reset to play again. 🏆';
+                answered = true;
+                disableAllOptions();
+                enableSkipButton(false);
+            }
+        }
     }
 
     refTrigger.addEventListener('click', () => { sidebarOverlay.classList.add('active'); refSidebar.classList.add('open'); });
