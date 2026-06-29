@@ -34,6 +34,7 @@
             z-index: 1;
         }
 
+        /* ========== 顶部栏 - 桌面默认横向 ========== */
         .top-bar {
             display: flex;
             justify-content: space-between;
@@ -70,6 +71,8 @@
             cursor: pointer;
             outline: none;
             font-family: inherit;
+            max-width: 100%;           /* 宽度自适应容器 */
+            text-overflow: ellipsis;   /* 文字过长显示省略号 */
         }
         #themeSelect:focus {
             border-color: #e09d32;
@@ -268,6 +271,8 @@
         }
         .skip-btn:active { transform: translateY(2px); box-shadow: 0 2px 0 #7b4a1a; }
         .skip-btn:disabled { opacity: 0.5; pointer-events: none; }
+
+        /* ========== 底部统计栏 ========== */
         .footer-stats {
             display: flex;
             justify-content: center;
@@ -282,11 +287,25 @@
             border-radius: 40px;
             font-weight: bold;
             display: flex;
-            gap: 1rem;
+            gap: 0.5rem;
             flex-wrap: wrap;
+            justify-content: center;
             font-size: 0.8rem;
         }
-        .stats-panel .stat-value { color: #b45f1b; font-size: 1rem; margin-left: 4px; }
+        .stats-panel .stat-item {
+            color: #4b6b3e;
+            white-space: nowrap;   /* 防止单个统计项折行 */
+        }
+        .stats-panel .stat-value {
+            color: #b45f1b;
+            font-size: 1rem;
+            margin-left: 4px;
+        }
+        .stats-panel .stat-sep {
+            color: #b8a68b;
+            font-weight: 300;
+        }
+
         .progress-text {
             background: #efe3cf;
             padding: 6px 14px;
@@ -311,6 +330,7 @@
             100% { background-color: #fffaf0; box-shadow: 0 0 0 0 #ffd58c; }
         }
 
+        /* ========== 左侧参考按钮 ========== */
         .ref-trigger {
             position: fixed;
             left: 12px;
@@ -447,13 +467,91 @@
             border-radius: 60px;
         }
 
-        @media (max-width: 700px) {
+        /* ========== 响应式：手机版 ========== */
+        @media (max-width: 768px) {
             .game-container { padding: 1rem; }
             .ref-trigger { width: 42px; height: 42px; font-size: 22px; left: 8px; }
             .option-btn { font-size: 0.85rem; padding: 0.6rem; }
-            .top-bar { flex-direction: column; align-items: stretch; }
-            .mode-bar { justify-content: center; }
-            .theme-selector { justify-content: center; }
+
+            /* ----- 顶部栏：垂直排列 ----- */
+            .top-bar {
+                flex-direction: column;
+                align-items: stretch;
+                gap: 0.8rem;
+            }
+            .mode-bar {
+                justify-content: center;
+            }
+            .mode-btn {
+                font-size: 0.9rem;
+                padding: 0.4rem 1.2rem;
+            }
+            .theme-selector {
+                justify-content: flex-start;  /* 左对齐 */
+                padding: 0.2rem 0.6rem 0.2rem 0.8rem;
+                background: #efe3cf;
+                border-radius: 60px;
+                width: 100%;                 /* 占满容器宽度 */
+                max-width: 100%;
+                box-sizing: border-box;
+            }
+            .theme-selector label {
+                font-size: 0.8rem;
+                flex-shrink: 0;              /* 标签不收缩 */
+            }
+            #themeSelect {
+                font-size: 0.8rem;
+                padding: 0.3rem 0.6rem;
+                min-width: 0;                /* 允许收缩 */
+                width: 100%;                 /* 占满剩余宽度 */
+                max-width: 100%;
+                text-overflow: ellipsis;
+                overflow: hidden;
+                white-space: nowrap;
+                box-sizing: border-box;
+            }
+
+            /* ----- 底部统计栏：一行显示，字体略小 ----- */
+            .stats-panel {
+                font-size: 0.7rem;
+                padding: 4px 10px;
+                gap: 0.2rem;
+                flex-wrap: wrap;
+                justify-content: center;
+            }
+            .stats-panel .stat-value {
+                font-size: 0.85rem;
+            }
+            .stats-panel .stat-sep {
+                margin: 0 2px;
+            }
+            .progress-text {
+                font-size: 0.7rem;
+                padding: 4px 10px;
+                min-width: auto;
+            }
+            .refresh-icon {
+                font-size: 0.7rem;
+                padding: 4px 10px;
+            }
+            .footer-stats {
+                gap: 0.6rem;
+            }
+        }
+
+        /* ========== 超小屏手机（< 400px）进一步调整 ========== */
+        @media (max-width: 400px) {
+            .mode-btn {
+                font-size: 0.8rem;
+                padding: 0.3rem 0.8rem;
+            }
+            .stats-panel {
+                font-size: 0.6rem;
+                gap: 0.1rem;
+            }
+            .stats-panel .stat-value {
+                font-size: 0.75rem;
+            }
         }
     </style>
 </head>
@@ -477,11 +575,11 @@
 <div class="game-container">
     <div class="top-bar">
         <div class="mode-bar">
-            <button id="randomModeBtn" class="mode-btn active">🎲 Random Mode</button>
-            <button id="challengeModeBtn" class="mode-btn">🏆 Challenge Mode</button>
+            <button id="randomModeBtn" class="mode-btn active">🎲 Random</button>
+            <button id="challengeModeBtn" class="mode-btn">🏆 Challenge</button>
         </div>
         <div class="theme-selector">
-            <label>🎯 Theme:</label>
+            <label>Theme:</label>
             <select id="themeSelect"></select>
         </div>
     </div>
@@ -507,12 +605,16 @@
         <div class="feedback" id="feedbackMsg">✨ Click a word to find the match ✨</div>
         <button class="skip-btn" id="skipBtn">⏭️ Skip</button>
         <div class="footer-stats">
-            <div class="stats-panel">
-                <span>1st: <span id="stat1" class="stat-value">0</span></span>
-                <span>2nd: <span id="stat2" class="stat-value">0</span></span>
-                <span>3rd: <span id="stat3" class="stat-value">0</span></span>
-                <span>4th: <span id="stat4" class="stat-value">0</span></span>
-                <span>⏭️ Skip: <span id="statSkip" class="stat-value">0</span></span>
+            <div class="stats-panel" id="statsPanel">
+                <span class="stat-item">1st: <span id="stat1" class="stat-value">0</span></span>
+                <span class="stat-sep">|</span>
+                <span class="stat-item">2nd: <span id="stat2" class="stat-value">0</span></span>
+                <span class="stat-sep">|</span>
+                <span class="stat-item">3rd: <span id="stat3" class="stat-value">0</span></span>
+                <span class="stat-sep">|</span>
+                <span class="stat-item">4th: <span id="stat4" class="stat-value">0</span></span>
+                <span class="stat-sep">|</span>
+                <span class="stat-item">Skip: <span id="statSkip" class="stat-value">0</span></span>
             </div>
             <div class="progress-text" id="progressText">Round: <span class="progress-count">0</span></div>
             <span class="refresh-icon" id="reshuffleBtn">🔄 Reset Game</span>
@@ -528,12 +630,12 @@
     let roundsCompleted = 0;
     let remainingWords = [];
     let currentPair = null;
-    let nextPair = null;          // 预加载的下一题数据
+    let nextPair = null;
     let answered = false, attemptCount = 0, autoTimer = null, currentOptions = [];
     let isTransitioning = false;
     let currentCommonWord = null;
     let currentThemeId = null;
-    let preloadTimer = null;      // 预加载计时器
+    let preloadTimer = null;
 
     let currentWordBank = [];
     let currentCards = [];
@@ -599,13 +701,10 @@
         const leftImg = document.createElement('img'); leftImg.id = 'leftImg';
         const rightImg = document.createElement('img'); rightImg.id = 'rightImg';
         leftImageBox.appendChild(leftImg); rightImageBox.appendChild(rightImg);
-        
         leftImg.src = `${currentImageBaseUrl}${cardA.id+1}.png`;
         rightImg.src = `${currentImageBaseUrl}${cardB.id+1}.png`;
-        
         leftImg.onerror = () => { leftImg.src = `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200' viewBox='0 0 200 200'%3E%3Crect width='200' height='200' fill='%23e8d5b5'/%3E%3Ctext x='100' y='110' font-size='28' text-anchor='middle' fill='%2380552e'%3E${cardA.id+1}%3C/text%3E%3C/svg%3E`; };
         rightImg.onerror = () => { rightImg.src = `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200' viewBox='0 0 200 200'%3E%3Crect width='200' height='200' fill='%23e8d5b5'/%3E%3Ctext x='100' y='110' font-size='28' text-anchor='middle' fill='%2380552e'%3E${cardB.id+1}%3C/text%3E%3C/svg%3E`; };
-        
         leftWordHint.innerHTML = `📖 ${cardA.words.length} icons`;
         rightWordHint.innerHTML = `📖 ${cardB.words.length} icons`;
     }
@@ -627,7 +726,6 @@
         return Array.from(opts).sort(() => Math.random() - 0.5);
     }
 
-    // ========== 随机模式专用 ==========
     function generateRandomPair() {
         let a = Math.floor(Math.random() * currentCards.length);
         let b = Math.floor(Math.random() * currentCards.length);
@@ -635,7 +733,6 @@
         return { cardA: currentCards[a], cardB: currentCards[b], commonWord: findCommonWord(currentCards[a], currentCards[b]) };
     }
 
-    // ========== 挑战模式专用：生成题目（不涉及预加载） ==========
     function generateChallengePair() {
         if (remainingWords.length === 0) return null;
         const idx = Math.floor(Math.random() * remainingWords.length);
@@ -651,17 +748,14 @@
         return { cardA: candidates[a], cardB: candidates[b], commonWord: word, usedWord: word };
     }
 
-    // ========== 预加载下一题（挑战模式专用） ==========
     function preloadNextChallengePair() {
         if (remainingWords.length === 0) {
             nextPair = null;
             return;
         }
-        // 生成下一题数据（基于当前剩余单词）
         const pair = generateChallengePair();
         if (pair) {
             nextPair = pair;
-            // 后台预加载图片
             const img1 = new Image();
             img1.src = `${currentImageBaseUrl}${pair.cardA.id+1}.png`;
             const img2 = new Image();
@@ -671,15 +765,11 @@
         }
     }
 
-    // ========== 核心：加载当前题目的下一题（挑战模式） ==========
     function loadNextChallengePair() {
-        // 1. 先移除当前使用的单词
         if (currentPair?.usedWord) {
             const idx = remainingWords.indexOf(currentPair.usedWord);
             if (idx !== -1) remainingWords.splice(idx, 1);
         }
-        
-        // 2. 检查是否全部完成
         if (remainingWords.length === 0) {
             feedbackMsg.innerHTML = '🏆 Challenge completed! Press Reset to play again. 🏆';
             answered = true;
@@ -687,13 +777,10 @@
             enableSkipButton(false);
             return;
         }
-        
-        // 3. 使用预加载的下一题，或实时生成
         if (nextPair) {
             currentPair = nextPair;
             nextPair = null;
         } else {
-            // 极少数情况：没有预加载（如刚切换模式时），直接生成
             const pair = generateChallengePair();
             if (!pair) {
                 feedbackMsg.innerHTML = '🏆 Challenge completed! Press Reset to play again. 🏆';
@@ -704,24 +791,18 @@
             }
             currentPair = pair;
         }
-        
         currentCommonWord = currentPair.commonWord;
         roundsCompleted++;
         updateProgressUI();
         answered = false;
         attemptCount = 0;
         enableSkipButton(true);
-        
-        // 4. 显示题目
         displayCardImages(currentPair.cardA, currentPair.cardB);
         currentOptions = generateOptions(currentCommonWord);
         renderOptions(currentOptions);
         feedbackMsg.innerHTML = '🔍 Pick the word that appears on both cards.';
         feedbackMsg.style.background = "#e7d6bd";
         isTransitioning = false;
-        
-        // 5. 关键：在显示当前题目的同时，预加载下一题
-        //    使用 setTimeout 让当前图片优先加载
         if (preloadTimer) clearTimeout(preloadTimer);
         preloadTimer = setTimeout(() => {
             preloadNextChallengePair();
@@ -729,10 +810,8 @@
         }, 150);
     }
 
-    // ========== 随机模式：加载下一题（保留预加载机制） ==========
     function loadNextRandomPair() {
         if (currentMode !== "random") return;
-        // 如果有预加载的 nextPair，使用它；否则实时生成
         if (nextPair) {
             currentPair = nextPair;
             nextPair = null;
@@ -745,15 +824,12 @@
         answered = false;
         attemptCount = 0;
         enableSkipButton(true);
-        
         displayCardImages(currentPair.cardA, currentPair.cardB);
         currentOptions = generateOptions(currentCommonWord);
         renderOptions(currentOptions);
         feedbackMsg.innerHTML = '🔍 Pick the word that appears on both cards.';
         feedbackMsg.style.background = "#e7d6bd";
         isTransitioning = false;
-        
-        // 预加载下一题（随机模式）
         if (preloadTimer) clearTimeout(preloadTimer);
         preloadTimer = setTimeout(() => {
             nextPair = generateRandomPair();
@@ -765,7 +841,6 @@
         }, 150);
     }
 
-    // ========== 通用加载函数 ==========
     function loadNextPair() {
         if (currentMode === "random") {
             loadNextRandomPair();
@@ -790,7 +865,6 @@
         answered = true;
         disableAllOptions();
         enableSkipButton(false);
-        
         clearAutoTimer();
         autoTimer = setTimeout(() => {
             if (!isTransitioning) {
@@ -811,7 +885,6 @@
         answered = true;
         disableAllOptions();
         enableSkipButton(false);
-        
         isTransitioning = true;
         loadNextPair();
     }
@@ -841,7 +914,6 @@
         });
     }
 
-    // ========== 加载主题 ==========
     function loadTheme(themeId, themeData) {
         currentThemeId = themeId;
         currentWordBank = themeData.wordBank;
@@ -850,7 +922,6 @@
         currentAnswerCards = themeData.answerCards || ["c1.png","c2.png","c3.png","c4.png"];
         const cardsRaw = themeData.cardsData;
         currentCards = cardsRaw.map((indices, cid) => ({ id: cid, words: indices.map(idx => currentWordBank[idx]) }));
-        
         stats = { 1:0, 2:0, 3:0, 4:0, skip:0 };
         roundsCompleted = 0;
         answered = false; attemptCount = 0; isTransitioning = false;
@@ -860,8 +931,6 @@
         if (currentMode === "challenge") remainingWords = [...currentWordBank];
         else remainingWords = [];
         updateProgressUI();
-        
-        // 刷新侧边栏答案卡
         cardsListDiv.innerHTML = '';
         for (let i = 0; i < currentAnswerCards.length; i++) {
             const imgName = currentAnswerCards[i];
@@ -876,9 +945,7 @@
             cardDiv.appendChild(label);
             cardsListDiv.appendChild(cardDiv);
         }
-        
         showLoadingImages();
-        // 初始化加载第一题
         if (currentMode === "random") {
             const initialPair = generateRandomPair();
             currentPair = initialPair;
@@ -891,7 +958,6 @@
             feedbackMsg.innerHTML = '🔍 Pick the word that appears on both cards.';
             feedbackMsg.style.background = "#e7d6bd";
             answered = false; attemptCount = 0; enableSkipButton(true);
-            // 预加载下一题
             setTimeout(() => {
                 nextPair = generateRandomPair();
                 const img1 = new Image();
@@ -900,7 +966,6 @@
                 img2.src = `${currentImageBaseUrl}${nextPair.cardB.id+1}.png`;
             }, 200);
         } else {
-            // 挑战模式
             const initialPair = generateChallengePair();
             if (initialPair) {
                 currentPair = initialPair;
@@ -913,7 +978,6 @@
                 feedbackMsg.innerHTML = '🔍 Pick the word that appears on both cards.';
                 feedbackMsg.style.background = "#e7d6bd";
                 answered = false; attemptCount = 0; enableSkipButton(true);
-                // 预加载下一题（挑战模式）
                 setTimeout(() => {
                     preloadNextChallengePair();
                 }, 200);
@@ -964,16 +1028,13 @@
 
     function switchMode(newMode) {
         if (currentMode === newMode || isTransitioning) return;
-        
         let msg = "";
         if (newMode === "random") {
             msg = "Switch to Random Mode?\n\nStats and progress will reset.\n\n[Random Mode]\n- Cards are completely random\n- Same word may appear many times\n- No fixed ending, play as long as you like\n- Progress shows total rounds played";
         } else {
             msg = "Switch to Challenge Mode?\n\nStats and progress will reset.\n\n[Challenge Mode]\n- Each of the 57 words appears exactly once\n- Complete all 57 rounds to win\n- Words are randomized each session\n- Progress shows remaining words (x/57)";
         }
-        
         if (!confirm(msg)) return;
-        
         clearAutoTimer();
         if (preloadTimer) { clearTimeout(preloadTimer); preloadTimer = null; }
         currentMode = newMode;
@@ -985,8 +1046,6 @@
         updateStatsUI(); updateProgressUI();
         answered = false; attemptCount = 0; isTransitioning = false;
         showLoadingImages();
-        
-        // 初始化第一题
         if (currentMode === "random") {
             const initialPair = generateRandomPair();
             currentPair = initialPair;
@@ -1029,7 +1088,6 @@
                 enableSkipButton(false);
             }
         }
-        
         randomBtn.classList.toggle('active', currentMode === "random");
         challengeBtn.classList.toggle('active', currentMode === "challenge");
     }
@@ -1046,7 +1104,6 @@
         updateStatsUI(); updateProgressUI();
         answered = false; attemptCount = 0;
         showLoadingImages();
-        
         if (currentMode === "random") {
             const initialPair = generateRandomPair();
             currentPair = initialPair;
