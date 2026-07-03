@@ -667,13 +667,50 @@
     const wrongAudio = new Audio('sounds/wrong.mp3');
 
     function speakWord(word) {
-        if (window.speechSynthesis) {
-            window.speechSynthesis.cancel();
-            const u = new SpeechSynthesisUtterance(word);
-            u.lang = 'en-US'; u.rate = 0.9;
-            window.speechSynthesis.speak(u);
+    if (!window.speechSynthesis) return;
+
+    // 取消当前正在播放的语音，避免重叠
+    window.speechSynthesis.cancel();
+
+    const utterance = new SpeechSynthesisUtterance(word);
+    utterance.lang = 'en-US';
+    utterance.rate = 0.9;
+    utterance.pitch = 1.0;
+
+    // 获取所有可用语音
+    const voices = window.speechSynthesis.getVoices();
+
+    // 按优先级顺序选择最佳语音 (针对 iPad 优化)
+    const preferredVoiceNames = [
+        'Siri',                 // Apple 设备上的自然语音 (iPhone/iPad/Mac)
+        'Google UK English Female', // 非常自然的英式女声 (Chrome 上常用)
+        'Google US English',    // 自然的美式女声 (备选)
+        'Samantha',             // 备选 (iPad 默认语音)
+        'Microsoft Zira',       // Windows 备选
+        'Daniel'                // 英式男声 (备选)
+    ];
+
+    // 尝试查找最佳匹配语音
+    let selectedVoice = null;
+    for (const name of preferredVoiceNames) {
+        const found = voices.find(voice => voice.name.includes(name) && voice.lang.startsWith('en'));
+        if (found) {
+            selectedVoice = found;
+            break;
         }
     }
+
+    // 如果没有找到首选语音，则选择第一个可用的英语语音
+    if (!selectedVoice) {
+        selectedVoice = voices.find(voice => voice.lang.startsWith('en')) || null;
+    }
+
+    if (selectedVoice) {
+        utterance.voice = selectedVoice;
+    }
+
+    window.speechSynthesis.speak(utterance);
+}
 
     function updateStatsUI() {
         document.getElementById('stat1').innerText = stats[1];
