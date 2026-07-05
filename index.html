@@ -732,14 +732,30 @@
         return null;
     }
 
+    // ========== 修复：generateOptions 增加容错机制 ==========
     function generateOptions(correctWord) {
         let opts = new Set([correctWord]);
         let candidates = currentWordBank.filter(w => w !== correctWord);
+        // 打乱候选词顺序
         for (let i = candidates.length - 1; i > 0; i--) {
             const j = Math.floor(Math.random() * (i + 1));
             [candidates[i], candidates[j]] = [candidates[j], candidates[i]];
         }
-        while (opts.size < 4 && candidates.length) opts.add(candidates.pop());
+        // 从候选词中取前3个作为干扰项
+        for (let i = 0; i < 3 && candidates.length > 0; i++) {
+            opts.add(candidates.pop());
+        }
+        // 容错：如果选项不足4个，从 currentWordBank 中补充（避免空白按钮）
+        if (opts.size < 4) {
+            const fallback = currentWordBank.filter(w => !opts.has(w));
+            for (let i = 0; i < fallback.length && opts.size < 4; i++) {
+                opts.add(fallback[i]);
+            }
+        }
+        // 如果仍然不足4个（极罕见情况），强行补位
+        while (opts.size < 4) {
+            opts.add(`Word${opts.size}`);
+        }
         return Array.from(opts).sort(() => Math.random() - 0.5);
     }
 
@@ -847,8 +863,6 @@
         feedbackMsg.innerHTML = '🔍 Pick the word that appears on both cards.';
         feedbackMsg.style.background = "#e7d6bd";
         isTransitioning = false;
-
-        // 移除了 Random Mode 的预加载定时器
     }
 
     function loadNextPair() {
@@ -903,9 +917,21 @@
     function enableSkipButton(en) { skipBtn.disabled = !en; }
     function clearAutoTimer() { if (autoTimer) { clearTimeout(autoTimer); autoTimer = null; } }
 
+    // ========== 修复：renderOptions 增加调试和容错 ==========
     function renderOptions(options) {
-        console.log('Generating options for:', correctWord, 'from word bank:', currentWordBank);
+        // 调试日志：确认接收到的选项数组
+        console.log('renderOptions received:', options);
         optionsContainer.innerHTML = '';
+        if (!options || options.length === 0) {
+            console.warn('Options array is empty or invalid');
+            // 容错：显示一个占位按钮，提示用户刷新
+            const placeholderBtn = document.createElement('button');
+            placeholderBtn.className = 'option-btn';
+            placeholderBtn.innerText = '⚠️ Error - Refresh';
+            placeholderBtn.disabled = true;
+            optionsContainer.appendChild(placeholderBtn);
+            return;
+        }
         options.forEach(word => {
             const btn = document.createElement('button');
             btn.className = 'option-btn';
@@ -969,7 +995,6 @@
             feedbackMsg.innerHTML = '🔍 Pick the word that appears on both cards.';
             feedbackMsg.style.background = "#e7d6bd";
             answered = false; attemptCount = 0; enableSkipButton(true);
-            // Random Mode 不再预加载
         } else {
             const initialPair = generateChallengePair();
             if (initialPair) {
@@ -1063,7 +1088,6 @@
             feedbackMsg.innerHTML = '🔍 Pick the word that appears on both cards.';
             feedbackMsg.style.background = "#e7d6bd";
             answered = false; attemptCount = 0; enableSkipButton(true);
-            // Random Mode 不再预加载
         } else {
             const initialPair = generateChallengePair();
             if (initialPair) {
