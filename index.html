@@ -904,6 +904,7 @@
     function clearAutoTimer() { if (autoTimer) { clearTimeout(autoTimer); autoTimer = null; } }
 
     function renderOptions(options) {
+        console.log('Generating options for:', correctWord, 'from word bank:', currentWordBank);
         optionsContainer.innerHTML = '';
         options.forEach(word => {
             const btn = document.createElement('button');
