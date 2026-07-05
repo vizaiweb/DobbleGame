@@ -71,8 +71,8 @@
             cursor: pointer;
             outline: none;
             font-family: inherit;
-            max-width: 100%;           /* 宽度自适应容器 */
-            text-overflow: ellipsis;   /* 文字过长显示省略号 */
+            max-width: 100%;
+            text-overflow: ellipsis;
         }
         #themeSelect:focus {
             border-color: #e09d32;
@@ -294,7 +294,7 @@
         }
         .stats-panel .stat-item {
             color: #4b6b3e;
-            white-space: nowrap;   /* 防止单个统计项折行 */
+            white-space: nowrap;
         }
         .stats-panel .stat-value {
             color: #b45f1b;
@@ -473,7 +473,6 @@
             .ref-trigger { width: 42px; height: 42px; font-size: 22px; left: 8px; }
             .option-btn { font-size: 0.85rem; padding: 0.6rem; }
 
-            /* ----- 顶部栏：垂直排列 ----- */
             .top-bar {
                 flex-direction: column;
                 align-items: stretch;
@@ -487,23 +486,23 @@
                 padding: 0.4rem 1.2rem;
             }
             .theme-selector {
-                justify-content: flex-start;  /* 左对齐 */
+                justify-content: flex-start;
                 padding: 0.2rem 0.6rem 0.2rem 0.8rem;
                 background: #efe3cf;
                 border-radius: 60px;
-                width: 100%;                 /* 占满容器宽度 */
+                width: 100%;
                 max-width: 100%;
                 box-sizing: border-box;
             }
             .theme-selector label {
                 font-size: 0.8rem;
-                flex-shrink: 0;              /* 标签不收缩 */
+                flex-shrink: 0;
             }
             #themeSelect {
                 font-size: 0.8rem;
                 padding: 0.3rem 0.6rem;
-                min-width: 0;                /* 允许收缩 */
-                width: 100%;                 /* 占满剩余宽度 */
+                min-width: 0;
+                width: 100%;
                 max-width: 100%;
                 text-overflow: ellipsis;
                 overflow: hidden;
@@ -511,7 +510,6 @@
                 box-sizing: border-box;
             }
 
-            /* ----- 底部统计栏：一行显示，字体略小 ----- */
             .stats-panel {
                 font-size: 0.7rem;
                 padding: 4px 10px;
@@ -539,7 +537,6 @@
             }
         }
 
-        /* ========== 超小屏手机（< 400px）进一步调整 ========== */
         @media (max-width: 400px) {
             .mode-btn {
                 font-size: 0.8rem;
@@ -630,7 +627,7 @@
     let roundsCompleted = 0;
     let remainingWords = [];
     let currentPair = null;
-    let nextPair = null;
+    let nextPair = null;          // 仅用于 Challenge Mode 预加载
     let answered = false, attemptCount = 0, autoTimer = null, currentOptions = [];
     let isTransitioning = false;
     let currentCommonWord = null;
@@ -667,50 +664,33 @@
     const wrongAudio = new Audio('sounds/wrong.mp3');
 
     function speakWord(word) {
-    if (!window.speechSynthesis) return;
-
-    // 取消当前正在播放的语音，避免重叠
-    window.speechSynthesis.cancel();
-
-    const utterance = new SpeechSynthesisUtterance(word);
-    utterance.lang = 'en-US';
-    utterance.rate = 0.9;
-    utterance.pitch = 1.0;
-
-    // 获取所有可用语音
-    const voices = window.speechSynthesis.getVoices();
-
-    // 按优先级顺序选择最佳语音 (针对 iPad 优化)
-    const preferredVoiceNames = [
-        'Siri',                 // Apple 设备上的自然语音 (iPhone/iPad/Mac)
-        'Google UK English Female', // 非常自然的英式女声 (Chrome 上常用)
-        'Google US English',    // 自然的美式女声 (备选)
-        'Samantha',             // 备选 (iPad 默认语音)
-        'Microsoft Zira',       // Windows 备选
-        'Daniel'                // 英式男声 (备选)
-    ];
-
-    // 尝试查找最佳匹配语音
-    let selectedVoice = null;
-    for (const name of preferredVoiceNames) {
-        const found = voices.find(voice => voice.name.includes(name) && voice.lang.startsWith('en'));
-        if (found) {
-            selectedVoice = found;
-            break;
+        if (!window.speechSynthesis) return;
+        window.speechSynthesis.cancel();
+        const utterance = new SpeechSynthesisUtterance(word);
+        utterance.lang = 'en-US';
+        utterance.rate = 0.9;
+        utterance.pitch = 1.0;
+        const voices = window.speechSynthesis.getVoices();
+        const preferredVoiceNames = [
+            'Siri', 'Google UK English Female', 'Google US English',
+            'Samantha', 'Microsoft Zira', 'Daniel'
+        ];
+        let selectedVoice = null;
+        for (const name of preferredVoiceNames) {
+            const found = voices.find(voice => voice.name.includes(name) && voice.lang.startsWith('en'));
+            if (found) {
+                selectedVoice = found;
+                break;
+            }
         }
+        if (!selectedVoice) {
+            selectedVoice = voices.find(voice => voice.lang.startsWith('en')) || null;
+        }
+        if (selectedVoice) {
+            utterance.voice = selectedVoice;
+        }
+        window.speechSynthesis.speak(utterance);
     }
-
-    // 如果没有找到首选语音，则选择第一个可用的英语语音
-    if (!selectedVoice) {
-        selectedVoice = voices.find(voice => voice.lang.startsWith('en')) || null;
-    }
-
-    if (selectedVoice) {
-        utterance.voice = selectedVoice;
-    }
-
-    window.speechSynthesis.speak(utterance);
-}
 
     function updateStatsUI() {
         document.getElementById('stat1').innerText = stats[1];
@@ -785,6 +765,7 @@
         return { cardA: candidates[a], cardB: candidates[b], commonWord: word, usedWord: word };
     }
 
+    // ===== Challenge Mode 专用：预加载下一题 =====
     function preloadNextChallengePair() {
         if (remainingWords.length === 0) {
             nextPair = null;
@@ -847,35 +828,27 @@
         }, 150);
     }
 
+    // ===== Random Mode：实时生成，不使用预加载 =====
     function loadNextRandomPair() {
         if (currentMode !== "random") return;
-        if (nextPair) {
-            currentPair = nextPair;
-            nextPair = null;
-        } else {
-            currentPair = generateRandomPair();
-        }
+
+        // 实时生成新的随机配对
+        currentPair = generateRandomPair();
         currentCommonWord = currentPair.commonWord;
         roundsCompleted++;
         updateProgressUI();
         answered = false;
         attemptCount = 0;
         enableSkipButton(true);
+
         displayCardImages(currentPair.cardA, currentPair.cardB);
         currentOptions = generateOptions(currentCommonWord);
         renderOptions(currentOptions);
         feedbackMsg.innerHTML = '🔍 Pick the word that appears on both cards.';
         feedbackMsg.style.background = "#e7d6bd";
         isTransitioning = false;
-        if (preloadTimer) clearTimeout(preloadTimer);
-        preloadTimer = setTimeout(() => {
-            nextPair = generateRandomPair();
-            const img1 = new Image();
-            img1.src = `${currentImageBaseUrl}${nextPair.cardA.id+1}.png`;
-            const img2 = new Image();
-            img2.src = `${currentImageBaseUrl}${nextPair.cardB.id+1}.png`;
-            preloadTimer = null;
-        }, 150);
+
+        // 移除了 Random Mode 的预加载定时器
     }
 
     function loadNextPair() {
@@ -995,13 +968,7 @@
             feedbackMsg.innerHTML = '🔍 Pick the word that appears on both cards.';
             feedbackMsg.style.background = "#e7d6bd";
             answered = false; attemptCount = 0; enableSkipButton(true);
-            setTimeout(() => {
-                nextPair = generateRandomPair();
-                const img1 = new Image();
-                img1.src = `${currentImageBaseUrl}${nextPair.cardA.id+1}.png`;
-                const img2 = new Image();
-                img2.src = `${currentImageBaseUrl}${nextPair.cardB.id+1}.png`;
-            }, 200);
+            // Random Mode 不再预加载
         } else {
             const initialPair = generateChallengePair();
             if (initialPair) {
@@ -1095,13 +1062,7 @@
             feedbackMsg.innerHTML = '🔍 Pick the word that appears on both cards.';
             feedbackMsg.style.background = "#e7d6bd";
             answered = false; attemptCount = 0; enableSkipButton(true);
-            setTimeout(() => {
-                nextPair = generateRandomPair();
-                const img1 = new Image();
-                img1.src = `${currentImageBaseUrl}${nextPair.cardA.id+1}.png`;
-                const img2 = new Image();
-                img2.src = `${currentImageBaseUrl}${nextPair.cardB.id+1}.png`;
-            }, 200);
+            // Random Mode 不再预加载
         } else {
             const initialPair = generateChallengePair();
             if (initialPair) {
@@ -1153,13 +1114,6 @@
             feedbackMsg.innerHTML = '🔍 Pick the word that appears on both cards.';
             feedbackMsg.style.background = "#e7d6bd";
             answered = false; attemptCount = 0; enableSkipButton(true);
-            setTimeout(() => {
-                nextPair = generateRandomPair();
-                const img1 = new Image();
-                img1.src = `${currentImageBaseUrl}${nextPair.cardA.id+1}.png`;
-                const img2 = new Image();
-                img2.src = `${currentImageBaseUrl}${nextPair.cardB.id+1}.png`;
-            }, 200);
         } else {
             const initialPair = generateChallengePair();
             if (initialPair) {
