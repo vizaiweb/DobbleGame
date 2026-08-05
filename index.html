@@ -676,11 +676,10 @@
     const rightAudio = new Audio('sounds/right.mp3');
     const wrongAudio = new Audio('sounds/wrong.mp3');
 
-    // PDF 下载功能配置
-    const pdfFolder = 'pdfs/';
+    // ===== PDF 下载功能：指向 GitHub Releases =====
+    const releaseBaseUrl = 'https://github.com/vizaiweb/DobbleGame/releases/download/v1.0/';
     const pdfExtension = '.pdf';
 
-    // 更新下载按钮状态
     function updateDownloadButton() {
         if (!currentThemeId) {
             downloadBtn.classList.add('disabled');
@@ -688,15 +687,19 @@
             downloadBtn.removeAttribute('download');
             return;
         }
-        const pdfUrl = `${pdfFolder}${currentThemeId}_cards${pdfExtension}`;
+
+        // 根据主题 ID 构造文件名
+        const fileName = `${currentThemeId}_cards${pdfExtension}`;
+        const pdfUrl = releaseBaseUrl + fileName;
         downloadBtn.href = pdfUrl;
-        // 检查 PDF 文件是否存在
+
+        // 检测文件是否存在
         fetch(pdfUrl, { method: 'HEAD' })
             .then(response => {
                 if (response.ok) {
                     downloadBtn.classList.remove('disabled');
                     downloadBtn.textContent = '📥 Download PDF';
-                    downloadBtn.download = `${currentThemeId}_cards${pdfExtension}`;
+                    downloadBtn.download = fileName;
                 } else {
                     downloadBtn.classList.add('disabled');
                     downloadBtn.textContent = '📥 Download PDF (pending)';
