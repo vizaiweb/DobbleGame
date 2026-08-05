@@ -676,9 +676,17 @@
     const rightAudio = new Audio('sounds/right.mp3');
     const wrongAudio = new Audio('sounds/wrong.mp3');
 
-    // ===== PDF 下载功能：指向 GitHub Releases =====
+    // ===== PDF 下载功能：直接映射，不检测 =====
     const releaseBaseUrl = 'https://github.com/vizaiweb/DobbleGame/releases/download/v1.0/';
     const pdfExtension = '.pdf';
+
+    // 主题 → PDF 文件名映射（新增主题时只需在这里加一行）
+    const pdfNameMap = {
+        'Common_knowledge_NF': 'Common_knowledge_NF_cards',
+        // 未来新增主题示例：
+        // 'P1_T2_BQ3': 'P1_T2_BQ3_cards',
+        // 'P1_T2_BQ4': 'P1_T2_BQ4_cards',
+    };
 
     function updateDownloadButton() {
         if (!currentThemeId) {
@@ -688,29 +696,19 @@
             return;
         }
 
-        // 根据主题 ID 构造文件名
-        const fileName = `${currentThemeId}_cards${pdfExtension}`;
-        const pdfUrl = releaseBaseUrl + fileName;
-        downloadBtn.href = pdfUrl;
-
-        // 检测文件是否存在
-        fetch(pdfUrl, { method: 'HEAD' })
-            .then(response => {
-                if (response.ok) {
-                    downloadBtn.classList.remove('disabled');
-                    downloadBtn.textContent = '📥 Download PDF';
-                    downloadBtn.download = fileName;
-                } else {
-                    downloadBtn.classList.add('disabled');
-                    downloadBtn.textContent = '📥 Download PDF (pending)';
-                    downloadBtn.removeAttribute('download');
-                }
-            })
-            .catch(() => {
-                downloadBtn.classList.add('disabled');
-                downloadBtn.textContent = '📥 Download PDF (pending)';
-                downloadBtn.removeAttribute('download');
-            });
+        // 检查当前主题是否在映射表中
+        if (pdfNameMap[currentThemeId]) {
+            const fileName = pdfNameMap[currentThemeId] + pdfExtension;
+            const pdfUrl = releaseBaseUrl + fileName;
+            downloadBtn.href = pdfUrl;
+            downloadBtn.download = fileName;
+            downloadBtn.classList.remove('disabled');
+            downloadBtn.textContent = '📥 Download PDF';
+        } else {
+            downloadBtn.classList.add('disabled');
+            downloadBtn.textContent = '📥 Download PDF (pending)';
+            downloadBtn.removeAttribute('download');
+        }
     }
 
     function speakWord(word) {
@@ -1090,7 +1088,6 @@
                 enableSkipButton(false);
             }
         }
-        // 更新下载按钮状态
         updateDownloadButton();
     }
 
@@ -1190,7 +1187,6 @@
         }
         randomBtn.classList.toggle('active', currentMode === "random");
         challengeBtn.classList.toggle('active', currentMode === "challenge");
-        // 更新下载按钮状态
         updateDownloadButton();
     }
 
@@ -1244,7 +1240,6 @@
                 enableSkipButton(false);
             }
         }
-        // 更新下载按钮状态
         updateDownloadButton();
     }
 
