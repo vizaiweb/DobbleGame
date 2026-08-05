@@ -676,9 +676,11 @@
     const rightAudio = new Audio('sounds/right.mp3');
     const wrongAudio = new Audio('sounds/wrong.mp3');
 
+    // PDF 下载功能配置
     const pdfFolder = 'pdfs/';
     const pdfExtension = '.pdf';
 
+    // 更新下载按钮状态
     function updateDownloadButton() {
         if (!currentThemeId) {
             downloadBtn.classList.add('disabled');
@@ -688,6 +690,7 @@
         }
         const pdfUrl = `${pdfFolder}${currentThemeId}_cards${pdfExtension}`;
         downloadBtn.href = pdfUrl;
+        // 检查 PDF 文件是否存在
         fetch(pdfUrl, { method: 'HEAD' })
             .then(response => {
                 if (response.ok) {
@@ -1084,6 +1087,7 @@
                 enableSkipButton(false);
             }
         }
+        // 更新下载按钮状态
         updateDownloadButton();
     }
 
@@ -1183,6 +1187,7 @@
         }
         randomBtn.classList.toggle('active', currentMode === "random");
         challengeBtn.classList.toggle('active', currentMode === "challenge");
+        // 更新下载按钮状态
         updateDownloadButton();
     }
 
@@ -1236,6 +1241,7 @@
                 enableSkipButton(false);
             }
         }
+        // 更新下载按钮状态
         updateDownloadButton();
     }
 
